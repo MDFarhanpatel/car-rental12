@@ -5,7 +5,7 @@ export default function cars(){
         <h2 className="text-4xl font-extrabold text-black mb-2 text-center">
           car rental booking
         </h2>
-        <p className="text-black text-sm text-center">Explore our available cars!</p>
+        <p className="text-black-800 text-sm text-center">Explore our available cars!</p>
       </div>
     </div>
   );
