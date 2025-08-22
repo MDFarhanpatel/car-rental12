@@ -17,16 +17,59 @@ import { Menubar } from "primereact/menubar";
 const Header = () => {
   const router = useRouter();
 
-  const items = [
+   const items = [
     {
       label: 'Home',
       icon: 'pi pi-fw pi-home',
       command: () => router.push('/pages/cars')
     },
+   
+      {
+      label: 'Admin',
+      icon: 'pi pi-fw pi-user',
+      items: [
+        {
+          label: 'Dashboard',
+          icon: 'pi pi-fw pi-chart-bar',
+          command: () => router.push('/pages/admin/dashboard')
+        },
+        {
+          label: 'Settings',
+          icon: 'pi pi-fw pi-cog',
+          command: () => router.push('/pages/admin/settings')
+        },
+        {
+          label: 'Reports',
+          icon: 'pi pi-fw pi-file',
+          command: () => router.push('/pages/admin/reports')
+        },
+        {
+          label: 'Users',
+          icon: 'pi pi-fw pi-users',
+          command: () => router.push('/pages/users')
+        },
+        {
+          label: 'Cars',
+          icon: 'pi pi-fw pi-car',
+          command: () => router.push('/pages/cars')
+        },
+        {
+          label: 'Bookings',
+          icon: 'pi pi-fw pi-calendar',
+          command: () => router.push('/pages/booking')
+        }
+      ]
+    },
+    
     {
       label: 'Users',
       icon: 'pi pi-fw pi-users',
       command: () => router.push('/pages/users')
+    },
+    {
+      label: 'Cars',
+      icon: 'pi pi-fw pi-car',
+      command: () => router.push('/pages/cars')
     },
     {
       label: 'Bookings',
@@ -34,7 +77,6 @@ const Header = () => {
       command: () => router.push('/pages/booking')
     }
   ];
-
   const start = (
     <div className="flex align-items-center gap-4">
       <img
@@ -43,7 +85,7 @@ const Header = () => {
         style={{ width: 48, height: 48 }}
         className="animate-bounce shadow-4 border-circle bg-yellow-100 p-1"
       />
-      <span className="text-3xl font-extrabold text-primary font-mono tracking-wide">
+      <span className="text-2xl font-extrabold text-primary font-mono pr-2 tracking-wide">
         Car Rental
       </span>
     </div>
@@ -62,7 +104,7 @@ const Header = () => {
 
   return (
     <header className="surface-0 shadow-5 border-round-bottom-3xl mb-0.5 ">
-      <div className="flex align-items-center justify-content-between px-6 py-3 bg-gradient-to-r from-cyan-200 via-pink-200 to-yellow-200">
+      <div className="flex align-items-center justify-content-between px-2 py-3 bg-gradient-to-r from-cyan-200 via-pink-200 to-yellow-200">
         <Menubar 
           model={items} 
           start={start} 
@@ -86,3 +128,6 @@ const Layout = ({ children }) => {
 };
 
 export default Layout;
+
+
+
