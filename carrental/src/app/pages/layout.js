@@ -37,8 +37,8 @@ const Header = () => {
       label: "Inventory",
       icon: "pi pi-fw pi-warehouse",
       items: [
-        { label: "Pending Vehicles", icon: "pi pi-fw pi-clock", command: () => router.push("/pages/inventory/pending") },
-        { label: "Available Vehicles", icon: "pi pi-fw pi-check", command: () => router.push("/pages/inventory/available") },
+        { label: "Pending Vehicles", icon: "pi pi-fw pi-clock", command: () => router.push("/pages/inventory/pending vehicles") },
+        { label: "Available Vehicles", icon: "pi pi-fw pi-check", command: () => router.push("/pages/inventory/Available Vehicles") },
       ],
     },
     {
@@ -100,7 +100,7 @@ const Header = () => {
 
   return (
     <header className="surface-0 shadow-5 border-round-bottom-3xl mb-0.5">
-      <div className="flex align-items-center justify-content-between px-1 py-3 bg-gradient-to-r from-cyan-200 via-pink-200 to-yellow-200">
+      <div className="flex align-items-center justify-content-between px-1 py-3 bg-white-alpha-90 from-teal-800  to-gray-400"> 
         <div className="flex align-items-center w-full">
           <div className="flex align-items-center flex-grow-1">
             {start}
