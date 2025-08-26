@@ -1,60 +1,54 @@
+// SidebarMenu.jsx
 "use client";
-import { useState } from "react";
-import "primereact/resources/themes/lara-light-indigo/theme.css";
-import "primereact/resources/primereact.css";
-import "primeicons/primeicons.css";
-import "primeflex/primeflex.css";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
-import { Button } from "primereact/button";
-import { Tag } from "primereact/tag";
+import React, { useState } from 'react';
+import { Sidebar } from 'primereact/sidebar';
+import { Button } from 'primereact/button';
+import { classNames } from 'primereact/utils';
 
+const SidebarMenu = () => {
+    const [visible, setVisible] = useState(false);
 
+    return (
+        <div className="card bg-white justify-center" >
+            {/* Toggle Button */}
+            <Button icon="pi pi-bars" onClick={() => setVisible(true)} className="p-button-text" />
 
+            {/* Sidebar */}
+            <Sidebar visible={visible} onHide={() => setVisible(false)} className="p-sidebar-sm" position="left">
+                <h2 className="m-0 mb-3">Menu</h2>
+                <ul className="list-none p-0 m-0">
+                    <li className="mb-2">
+                        <Button
+                            label="Dashboard"
+                            icon="pi pi-home"
+                            className="p-button-text w-full text-left"
+                        />
+                    </li>
+                    <li className="mb-2">
+                        <Button
+                            label="Settings"
+                            icon="pi pi-cog"
+                            className="p-button-text w-full text-left"
+                        />
+                    </li>
+                    <li className="mb-2">
+                        <Button
+                            label="Profile"
+                            icon="pi pi-user"
+                            className="p-button-text w-full text-left"
+                        />
+                    </li>
+                    <li className="mb-2">
+                        <Button
+                            label="Logout"
+                            icon="pi pi-sign-out"
+                            className="p-button-text w-full text-left"
+                        />
+                    </li>
+                </ul>
+            </Sidebar>
+        </div>
+    );
+};
 
-const usersData = [
-  { id: 1, name: "John Doe", email: "john@example.com", role: "Admin", status: "Active" },
-  { id: 2, name: "Jane Smith", email: "jane@example.com", role: "User", status: "Inactive" },
-  { id: 3, name: "Alice Brown", email: "alice@example.com", role: "User", status: "Active" },
-  { id: 4, name: "Bob Lee", email: "bob@example.com", role: "Manager", status: "Inactive" },
-];
-
-
-
-export default function Users() {
-  const [users, setUsers] = useState(usersData);
-
-  const statusBodyTemplate = (rowData) => (
-    <Tag
-      value={rowData.status}
-      severity={rowData.status === "Active" ? "success" : "danger"}
-      className="px-3 py-1 text-base"
-    />
-  );
-
-  const actionBodyTemplate = (rowData) => (
-    <Button
-      label="Edit"
-      icon="pi pi-pencil"
-      className="p-button-rounded p-button-info p-button-sm"
-      onClick={() => alert(`Edit user: ${rowData.name}`)}
-    />
-  );
-
-  return (
-    <div className="min-h-screen flex align-items-center justify-content-center bg-gradient-to-br from-blue-200 via-purple-200 to-pink-200">
-      <div className="bg-white/90 backdrop-blur-lg p-10 rounded-3xl shadow-2xl w-full max-w-3xl flex flex-column gap-8 border-2 border-blue-300">
-       
-        <DataTable value={users} className="p-datatable-striped" responsiveLayout="scroll">
-          <Column field="name" header="Name" sortable className="text-black" />
-          <Column field="email" header="Email" sortable className="text-black" />
-          <Column field="role" header="Role" sortable className="text-black" />
-          <Column header="Status" body={statusBodyTemplate} className="text-black" />
-          <Column header="Action" body={actionBodyTemplate} style={{ minWidth: "120px" }} />
-        </DataTable>
-      </div>
-    </div>
-  );
-}
-
-
+export default SidebarMenu;
