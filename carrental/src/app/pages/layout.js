@@ -93,7 +93,7 @@ const Header = () => {
       icon="pi pi-power-off"
       severity="danger"
       className="p-button-rounded font-bold px- py-1"
-      onClick={() => router.push("/")}
+      onClick={() => router.push("/home")}
       style={{ fontSize: "1rem" }}
     />
   );
@@ -114,7 +114,7 @@ const Header = () => {
           </div>
           <Button
             icon="pi pi-bars"
-            className="md:hidden ml-2 p-button-text"
+            className="md:hidden ml-2  p-button-text"
             onClick={() => setMobileMenuVisible(!mobileMenuVisible)}
             aria-label="Menu"
           />

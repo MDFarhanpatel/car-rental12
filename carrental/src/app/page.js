@@ -17,7 +17,7 @@ export default function Login() {
     if (email === "admin@example.com" && password === "password123") {
     }  setError("");
     // Replace with your authentication logic
- router.push("/pages/users"); // Redirect to cars page on successful login
+ router.push("/pages/home"); // Redirect to cars page on successful login
   };
 
   return (

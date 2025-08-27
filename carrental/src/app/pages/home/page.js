@@ -12,7 +12,7 @@ export default function DashboardHome() {
   ];
 
   return (
-    <div className="min-h-screen border-b-blue-500 bg-white p-6">
+    <div className="min-h-screen border-b-blue-500 bg-lime-300 p-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {stats.map((item, index) => (
           <Card
