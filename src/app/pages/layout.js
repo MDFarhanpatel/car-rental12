@@ -92,7 +92,7 @@ const Header = () => {
       label="Logout"
       icon="pi pi-power-off"
       severity="danger"
-      className="p-button-rounded bg-black font-bold px- py-1"
+      className="p-button-rounded bg-black font-bold px- py-2"
       onClick={() => router.push("/home")}
       style={{ fontSize: "1rem" }}
     />
