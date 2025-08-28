@@ -1,117 +1,198 @@
 "use client";
-import React, { useState, useRef } from "react";
-import { Button } from "primereact/button";
-import { Checkbox } from "primereact/checkbox";
-import { Dropdown } from "primereact/dropdown";
-import { InputText } from "primereact/inputtext";
-import { Toast } from "primereact/toast";
-import { BreadCrumb } from "primereact/breadcrumb";
+import React, { useState } from 'react';
+import { BreadCrumb } from 'primereact/breadcrumb';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { Sidebar } from 'primereact/sidebar';
+import { Button } from 'primereact/button';
+import { InputText } from 'primereact/inputtext';
+import { Dropdown } from 'primereact/dropdown';
+import { Toast } from 'primereact/toast';
+import { classNames } from 'primereact/utils';
+import { useRef, useEffect } from 'react';
 
-const themes = [
-  { name: "Light", code: "light" },
-  { name: "Dark", code: "dark" },
-  { name: "System", code: "system" }
+// Import CSS (put in index.js or App.js too)
+import 'primereact/resources/themes/lara-light-blue/theme.css';  // Use any PrimeReact blue theme you prefer
+import 'primereact/resources/primereact.min.css';
+import 'primeicons/primeicons.css';
+import 'primeflex/primeflex.css';
+
+
+const initialSettings = [
+  { name: 'site_name', value: 'karnataka', dataType: 'number' },
+  { name: 'support_email', value: 'carrentalsupport.com', dataType: 'string' },
+  { name: 'timezone', value: 'mumbai/india', dataType: 'string' }
+];
+
+const dataTypeOptions = [
+  { label: 'String', value: 'string' },
+  { label: 'Number', value: 'number' },
+  { label: 'Boolean', value: 'boolean' },
+  { label: 'Date', value: 'date' }
 ];
 
 export default function SettingsPage() {
-  const [form, setForm] = useState({
-    siteName: "",
-    adminEmail: "",
-    notificationsEnabled: false,
-    theme: null
-  });
+  const [settings, setSettings] = useState(initialSettings);
+  const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [isEdit, setIsEdit] = useState(false);
+  const [form, setForm] = useState({ name: '', value: '', dataType: 'string' });
+  const [editingIdx, setEditingIdx] = useState(null);
 
-  const [errors, setErrors] = useState({});
   const toast = useRef(null);
 
+  useEffect(() => {
+    if (sidebarVisible) {
+      document.body.style.overflow = 'hidden'; // Prevent background scroll
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [sidebarVisible]);
+
   const breadcrumbItems = [
-    { label: "Home", command: () => window.location.href = "/" },
-    { label: "Admin", command: () => window.location.href = "/admin" },
-    { label: "Settings" },
+    { label: 'Admin' },
+    { label: 'Settings' }
   ];
+  const breadcrumbHome = { icon: 'pi pi-home', url: '/' };
 
-  const validate = () => {
-    const errs = {};
-    if (!form.siteName.trim()) errs.siteName = "Site Name is required.";
-    if (!form.adminEmail.trim()) errs.adminEmail = "Admin Email is required.";
-    else if (!/\S+@\S+\.\S+/.test(form.adminEmail)) errs.adminEmail = "Invalid email format.";
-    if (!form.theme) errs.theme = "Please select a theme.";
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
+  const openSidebarForAdd = () => {
+    setForm({ name: '', value: '', dataType: 'string' });
+    setIsEdit(false);
+    setEditingIdx(null);
+    setSidebarVisible(true);
   };
 
-  const saveSettings = () => {
-    if (!validate()) return;
-    // Save logic here (e.g. API call)
-    toast.current.show({ severity: "success", summary: "Settings Saved", detail: "Settings updated successfully.", life: 2000 });
+  const openSidebarForEdit = idx => {
+    setForm(settings[idx]);
+    setEditingIdx(idx);
+    setIsEdit(true);
+    setSidebarVisible(true);
   };
+
+  const handleSave = () => {
+    if (!form.name || !form.dataType) return; // Prevent if required fields missing
+    if (isEdit && editingIdx !== null) {
+      const updated = [...settings];
+      updated[editingIdx] = form;
+      setSettings(updated);
+      toast.current.show({ severity: 'success', summary: 'Success', detail: 'Setting updated', life: 2200 });
+    } else {
+      setSettings([...settings, form]);
+      toast.current.show({ severity: 'success', summary: 'Success', detail: 'Setting added', life: 2200 });
+    }
+    setSidebarVisible(false);
+  };
+
+  const actionBodyTemplate = (rowData, options) => (
+    <Button
+      icon="pi pi-pencil"
+      className="p-button-text"
+      style={{ color: '#2563eb', background: 'transparent', border: 'none' }}
+      onClick={() => openSidebarForEdit(options.rowIndex)}
+      aria-label="Edit"
+    />
+  );
 
   return (
-    <div className="p-6 min-h-screen bg-gradient-to-r from-gray-950 via-gray-900 to-fuchsia-900 font-sans">
+    <div className={classNames('min-h-screen bg-gradient-to-r from-gray-950 via-gray-900 to-fuchsia-900 font-sans', { 'overflow-hidden': sidebarVisible })}>
       <Toast ref={toast} />
-      <div className="mb-5">
-        <BreadCrumb model={breadcrumbItems} home={{ icon: "pi pi-home" }} className="text-white font-bold" />
-      </div>
-      <h1 className="text-3xl font-extrabold text-white mb-6">Settings</h1>
-
-      <div className="bg-zinc-900 p-6 rounded-2xl shadow-lg max-w-lg mx-auto">
-        <div className="flex flex-col gap-5">
-          <div>
-            <label className="block text-white font-semibold mb-1" htmlFor="siteName">Site Name</label>
-            <InputText
-              id="siteName"
-              value={form.siteName}
-              onChange={e => setForm(f => ({ ...f, siteName: e.target.value }))}
-              placeholder="Enter site name"
-              className={`w-full p-3 rounded-md text-black ${errors.siteName ? "border-2 border-red-500" : ""}`}
-              autoFocus
+      <div className="p-7">
+        {/* Breadcrumb */}
+        <BreadCrumb model={breadcrumbItems} home={breadcrumbHome} className="mb-6" />
+        <h2 className="text-3xl font-semibold mb-8 text-white">Settings</h2>
+        <div className="bg-white rounded shadow p-6">
+          <div className="flex justify-end mb-4">
+            <Button
+              label="Add Setting"
+              icon="pi pi-plus"
+              className="p-button-rounded font-semibold"
+              style={{ background: '#2563eb', border: 'none', color: '#fff' }}
+              onClick={openSidebarForAdd}
             />
-            {errors.siteName && <small className="text-red-500">{errors.siteName}</small>}
           </div>
-
-          <div>
-            <label className="block text-white font-semibold mb-1" htmlFor="adminEmail">Admin Email</label>
-            <InputText
-              id="adminEmail"
-              value={form.adminEmail}
-              type="email"
-              onChange={e => setForm(f => ({ ...f, adminEmail: e.target.value }))}
-              placeholder="admin@example.com"
-              className={`w-full p-3 rounded-md text-black ${errors.adminEmail ? "border-2 border-red-500" : ""}`}
-            />
-            {errors.adminEmail && <small className="text-red-500">{errors.adminEmail}</small>}
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Checkbox
-              inputId="notifications"
-              checked={form.notificationsEnabled}
-              onChange={e => setForm(f => ({ ...f, notificationsEnabled: e.checked }))}
-            />
-            <label htmlFor="notifications" className="text-white font-semibold">Enable Notifications</label>
-          </div>
-
-          <div>
-            <label className="block text-white font-semibold mb-1">Theme</label>
-            <Dropdown
-              value={form.theme}
-              options={themes}
-              onChange={e => setForm(f => ({ ...f, theme: e.value }))}
-              optionLabel="name"
-              placeholder="Select a theme"
-              className={`${errors.theme ? "border-2 border-red-500" : ""} w-full text-black rounded-md p-3`}
-            />
-            {errors.theme && <small className="text-red-500">{errors.theme}</small>}
-          </div>
-
-          <Button
-            label="Save Settings"
-            icon="pi pi-check"
-            onClick={saveSettings}
-            className="bg-purple-700 border-none font-extrabold py-3 rounded-md"
-          />
+          <DataTable value={settings} paginator rows={5} className=" border-18 border-black rounded-xl w-full">
+            <Column field="name" header="Name" />
+            <Column field="value" header="Value" />
+            <Column field="dataType" header="Data Type" />
+            <Column body={actionBodyTemplate} header="Actions" style={{ width: '80px' }} />
+          </DataTable>
         </div>
       </div>
+
+      {/* Sidebar for Add/Edit */}
+      <Sidebar
+        visible={sidebarVisible}
+        position="right"
+        style={{ width: '400px', background: '#f9fafb', borderLeft: '2px solid #2563eb' }}
+        onHide={() => setSidebarVisible(false)}
+        blockScroll
+      >
+        <div className="flex flex-col h-full">
+          <div className="mb-6">
+            <h3 className="font-bold text-2xl text-[#2563eb] mb-1">
+              {isEdit ? 'Edit Setting' : 'Add Setting'}
+            </h3>
+            <p className="text-sm text-gray-500 mb-3">Please fill out all required fields.</p>
+          </div>
+          <div className="flex-1 flex flex-col gap-5">
+            {/* Name Field */}
+            <div>
+              <label className="font-semibold flex items-center">
+                Name <span className="text-red-500 ml-1">*</span>
+              </label>
+              <InputText
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                className="w-full mt-2 border-gray-300 rounded-lg focus:border-[#2563eb]"
+                required
+              />
+            </div>
+            {/* Value Field */}
+            <div>
+              <label className="font-semibold">Value</label>
+              <InputText
+                value={form.value}
+                onChange={e => setForm({ ...form, value: e.target.value })}
+                className="w-full mt-2 border-gray-300 rounded-lg focus:border-[#2563eb]"
+              />
+            </div>
+            {/* Data Type Field */}
+            <div>
+              <label className="font-semibold flex items-center">
+                Data Type <span className="text-red-500 ml-1">*</span>
+              </label>
+              <Dropdown
+                value={form.dataType}
+                options={dataTypeOptions}
+                optionLabel="label"
+                optionValue="value"
+                onChange={e => setForm({ ...form, dataType: e.value })}
+                className="w-full mt-2"
+                placeholder="Select Data Type"
+                required
+                style={{ borderRadius: '0.75rem' }}
+              />
+            </div>
+            {/* Submit Button */}
+            <Button
+              label={isEdit ? 'Update Setting' : 'Add Setting'}
+              className="w-full mt-4 font-semibold py-3"
+              style={{
+                background: '#2563eb',
+                border: 'none',
+                borderRadius: '0.5rem',
+                fontSize: '1.1rem',
+                boxShadow: '0 4px 10px #2563eb50',
+                color: '#fff'
+              }}
+              onClick={handleSave}
+              disabled={!form.name || !form.dataType}
+            />
+          </div>
+        </div>
+      </Sidebar>
     </div>
   );
 }

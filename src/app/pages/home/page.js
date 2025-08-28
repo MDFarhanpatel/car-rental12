@@ -12,12 +12,12 @@ export default function DashboardHome() {
   ];
 
   return (
-    <div className="min-h-screen border-b-blue-500 bg-lime-300 p-6">
+    <div className="p-4 min-h-screen bg-gradient-to-r from-gray-950 via-gray-900 to-fuchsia-900 font-sans">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {stats.map((item, index) => (
           <Card
             key={index}
-            className="shadow-2xl rounded-2xl p-6 bg-white border border-gray-200 hover:shadow-2xl transition-all hover:scale-110  ease-in-out border-b-4 border-b-blue-500    border-r-4 border-r-blue-500 border-shadow-2xl justify-content-center"
+            className=" place-content-center stroke-sky-500 group-hover:stroke-whiteshadow-2xl rounded-2xl p-6  border  border-gray-200 hover:shadow-2xl transition-all hover:scale-110  ease-in-out border-b-4 border-b-blue-500  h border-r-4 border-r-blue-500 border-shadow-2xl "
           >
             <div className="flex items-center justify-between">
               <div>
