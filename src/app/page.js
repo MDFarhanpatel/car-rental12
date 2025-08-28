@@ -21,7 +21,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-cyan-200 via-pink-200 to-yellow-200">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-gray-950 via-gray-900 to-fuchsia-900 font-sans">
       <div className="bg-white/90 backdrop-blur-lg p-10 rounded-3xl shadow-2xl w-full max-w-md flex flex-col gap-8 border-2 border-cyan-300">
         <div className="flex flex-col items-center">
           <img
@@ -70,7 +70,7 @@ export default function Login() {
           </div>
           <button
             type="submit"
-            className="bg-gradient-to-r from-yellow-400 via-pink-400 to-cyan-400 text-black py-2 rounded-xl font-bold shadow-lg hover:scale-105 transition-transform"
+            className="bg-gradient-to-r from-gray-950 via-gray-900 to-fuchsia-900 text-white py-2 rounded-xl font-bold shadow-lg hover:scale-105 transition-transform"
           >
             Sign In
           </button>
