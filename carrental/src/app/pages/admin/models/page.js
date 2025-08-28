@@ -26,9 +26,9 @@ const famousBrands = [
 
 // Flatten all models for all brands to be displayed in table initially
 const initialModels = [
-  { name: "Corolla", brand: famousBrands[0] },
-  { name: "Civic", brand: famousBrands[1] },
-  { name: "Focus", brand: famousBrands[2] },
+  { name: "innova crysta", brand: famousBrands[0] },
+  { name: "Honda city", brand: famousBrands[1] },
+  { name: "Ford Eco sport", brand: famousBrands[2] },
 ];
 
 export default function ModelsPage() {

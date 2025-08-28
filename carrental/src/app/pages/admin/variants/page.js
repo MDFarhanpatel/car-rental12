@@ -20,9 +20,9 @@ const carBrandNames = [
 
 export default function VariantsPage() {
   const [variants, setVariants] = useState([
-    { name: "GLi", model: "Corolla" },
-    { name: "Altis", model: "Corolla" },
-    { name: "VTEC", model: "Civic" }
+    { name: "s6", model: "bmw" },
+    { name: "s3", model: "bmw" },
+    { name: "gtr-3", model: "ferrari" }
   ]);
   const [showDialog, setShowDialog] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);

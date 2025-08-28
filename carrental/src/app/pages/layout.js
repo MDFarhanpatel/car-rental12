@@ -29,8 +29,8 @@ const Header = () => {
         { label: "States", icon: "pi pi-fw pi-map-marker", command: () => router.push("/pages/admin/states") },
         { label: "Cities", icon: "pi pi-fw pi-map-marker", command: () => router.push("/pages/admin/cities") },
         { label: "Checklist Category", icon: "pi pi-fw pi-check-square", command: () => router.push("/pages/admin/ChecklistCatogary") },
-        { label: "Checklist Items", icon: "pi pi-fw pi-check-square", command: () => router.push("/pages/admin/checklist-items") },
-        { label: "Settings", icon: "pi pi-fw pi-cog", command: () => router.push("/pages/admin/settings") },
+        { label: "Checklist Items", icon: "pi pi-fw pi-check-square", command: () => router.push("/pages/admin/ChecklistOption") },
+        { label: "Settings", icon: "pi pi-fw pi-cog", command: () => router.push("/pages/admin/Settings") },
       ],
     },
     {
@@ -92,7 +92,7 @@ const Header = () => {
       label="Logout"
       icon="pi pi-power-off"
       severity="danger"
-      className="p-button-rounded font-bold px- py-1"
+      className="p-button-rounded bg-black font-bold px- py-1"
       onClick={() => router.push("/home")}
       style={{ fontSize: "1rem" }}
     />
@@ -114,7 +114,7 @@ const Header = () => {
           </div>
           <Button
             icon="pi pi-bars"
-            className="md:hidden ml-2  p-button-text"
+            className="md:hidden ml-2 bg-black p-button-text"
             onClick={() => setMobileMenuVisible(!mobileMenuVisible)}
             aria-label="Menu"
           />
