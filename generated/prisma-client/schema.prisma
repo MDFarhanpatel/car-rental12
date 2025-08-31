@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma-client"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DB_URL")
+}
+
+enum role {
+  USER
+  ADMIN
+  Hoster
+  Driver
+  provider
+  customer
+  mechanic
+}
+
+model user {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  email     String  @unique
+  password  String
+  role_id   role
+  is_active Boolean @default(true)
+}
