@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@prisma/client": "^6.15.0",
+    "bcrypt": "^6.0.0",
     "chart.js": "^4.5.0",
+    "jsonwebtoken": "^9.0.2",
     "next": "^15.4.6",
     "primeflex": "^4.0.0",
     "primeicons": "^7.0.0",
