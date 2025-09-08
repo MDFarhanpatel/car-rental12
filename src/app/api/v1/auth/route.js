@@ -1,48 +1,70 @@
-import { ApiError } from "next/dist/server/api-utils";
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/v1/auth/[...nextauth]/route";
-import { prisma } from "@/lib/prisma";    
-import bcrypt from "bcryptjs";
+import { NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
+import { generateToken } from '../../../../../src/app/util/jwt-access';
+// Import your database connection here
+// import { connectDB } from '../../../../util/database';
 
-const bodySchema = z.object({
-  currentPassword: z.string().min(6),
-  newPassword: z.string().min(6),
-}); 
+const prisma = new prismaClient();
 
-export  async function PATCH(request) {
+export async function POST(request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      throw new ApiError(401, "Unauthorized");
-    }
-    const body = await request.json();
-    const { currentPassword, newPassword } = bodySchema.parse(body);
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { password: true },
+    const { email, password } = await request.json();
+    const userFromDb = await prisma.user.findUnique({
+      where: { email },
     });
-    if (!user) {
-      throw new ApiError(404, "User not found");
+    
+    if (!email || !password) {
+      return NextResponse.json(
+        { message: "Email and password are required", statusCode: 400 },
+        { status: 400 }
+      );
     }
-    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
-    if (!isPasswordValid) {
-      throw new ApiError(400, "Current password is incorrect");
-    }
-    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-    await prisma.user.update({
-      where: { email: session.user.email },
-      data: { password: hashedNewPassword },
+
+    
+    // Connect to database and find user
+    // await connectDB();
+    // const user = await User.findOne({ email });
+    
+    // For demonstration - replace with actual database logic
+    // const user = await getUserFromDatabase(email);
+    
+    // if (!user) {
+    //   return NextResponse.json(
+    //     { message: "Invalid credentials", statusCode: 401 },
+    //     { status: 401 }
+    //   );
+    // }
+    
+    // Verify password
+    // const isPasswordValid = await bcrypt.compare(password, user.password);
+    
+    // if (!isPasswordValid) {
+    //   return NextResponse.json(
+    //     { message: "Invalid credentials", statusCode: 401 },
+    //     { status: 401 }
+    //   );
+    // }
+    
+    // Generate token with user data
+    const tokenPayload = {
+      userId: "user.id", // Replace with actual user.id
+      email: email,
+      // Add other user data as needed
+    };
+    
+    const token = await generateToken(tokenPayload);
+    
+    return NextResponse.json({
+      message: "Login Successful",
+      data: token,
+      statusCode: 200
     });
-    return NextResponse.json({ message: "Password updated successfully" });
+    
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
-    } else if (error instanceof ApiError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode });
-    } else {
-      return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
-    }     
+    console.error('Auth error:', error);
+    return NextResponse.json(
+      { message: "Internal server error", statusCode: 500 },
+      { status: 500 }
+    );
   }
 }
