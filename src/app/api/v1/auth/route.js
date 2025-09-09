@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { generateToken } from '../../../../../src/app/util/jwt-access';
+// import { generateToken } from '../../../../../src/app/util/jwt-access';
+import { generateToken } from '@/app/util/jwt-access';
 // Import your database connection here
 // import { connectDB } from '../../../../util/database';
 
