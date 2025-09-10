@@ -112,12 +112,13 @@ export default function Login() {
       });
       const data = await response.json();
       if (response.ok) {
+        // No need to save token to localStorage; auth cookie is set by the API route
         router.push("/pages/home");
       } else {
         setError(data.message || "Login failed");
       }
-    } catch {
-      setError(""); // Removed network error message
+    } catch (error) {
+      setError("Network error. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -145,8 +146,8 @@ export default function Login() {
           )}
           <div>
             <label
-              htmlFor="emailOrUsername"
               className="block mb-2 text-sm font-semibold text-black"
+              htmlFor="emailOrUsername"
             >
               Email or Username
             </label>
@@ -166,8 +167,8 @@ export default function Login() {
           </div>
           <div>
             <label
-              htmlFor="password"
               className="block mb-2 text-sm font-semibold text-black"
+              htmlFor="password"
             >
               Password
             </label>
@@ -201,3 +202,4 @@ export default function Login() {
     </div>
   );
 }
+
