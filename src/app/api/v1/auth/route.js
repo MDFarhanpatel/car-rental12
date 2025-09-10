@@ -1,19 +1,16 @@
 import { NextResponse } from 'next/server';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-// import { generateToken } from '../../../../../src/app/util/jwt-access';
-import { generateToken } from '@/app/util/jwt-access';
-// Import your database connection here
-// import { connectDB } from '../../../../util/database';
+import { generateToken } from '../../../util/jwt-access'; // Fixed import path
 
-const prisma = new prismaClient();
+// Initialize Prisma Client correctly
+const prisma = new PrismaClient();
 
 export async function POST(request) {
   try {
     const { email, password } = await request.json();
-    const userFromDb = await prisma.user.findUnique({
-      where: { email },
-    });
     
+    // Validate input FIRST
     if (!email || !password) {
       return NextResponse.json(
         { message: "Email and password are required", statusCode: 400 },
@@ -21,36 +18,33 @@ export async function POST(request) {
       );
     }
 
+    // Then query database
+    const userFromDb = await prisma.user.findUnique({
+      where: { email },
+    });
     
-    // Connect to database and find user
-    // await connectDB();
-    // const user = await User.findOne({ email });
-    
-    // For demonstration - replace with actual database logic
-    // const user = await getUserFromDatabase(email);
-    
-    // if (!user) {
-    //   return NextResponse.json(
-    //     { message: "Invalid credentials", statusCode: 401 },
-    //     { status: 401 }
-    //   );
-    // }
+    if (!userFromDb) {
+      return NextResponse.json(
+        { message: "Invalid credentials", statusCode: 401 },
+        { status: 401 }
+      );
+    }
     
     // Verify password
-    // const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, userFromDb.password);
     
-    // if (!isPasswordValid) {
-    //   return NextResponse.json(
-    //     { message: "Invalid credentials", statusCode: 401 },
-    //     { status: 401 }
-    //   );
-    // }
+    if (!isPasswordValid) {
+      return NextResponse.json(
+        { message: "Invalid credentials", statusCode: 401 },
+        { status: 401 }
+      );
+    }
     
-    // Generate token with user data
+    // Generate token with actual user data
     const tokenPayload = {
-      userId: "user.id", // Replace with actual user.id
-      email: email,
-      // Add other user data as needed
+      userId: userFromDb.id, // Use actual user ID
+      email: userFromDb.email,
+      name: userFromDb.name,
     };
     
     const token = await generateToken(tokenPayload);
@@ -67,5 +61,8 @@ export async function POST(request) {
       { message: "Internal server error", statusCode: 500 },
       { status: 500 }
     );
+  } finally {
+    // Always disconnect Prisma
+    await prisma.$disconnect();
   }
 }
