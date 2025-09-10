@@ -86,7 +86,6 @@
 // }
 
 
-
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -102,34 +101,23 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setIsLoading(true);
-
     try {
       const response = await fetch("/api/v1/auth", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username: emailOrUsername, // Your API expects username
+          username: emailOrUsername,
           password: password,
         }),
       });
-
       const data = await response.json();
-
       if (response.ok) {
-        // Store the token (optional - your API already sets HTTP-only cookie)
-        if (data.data?.token) {
-          localStorage.setItem("authToken", data.data.token);
-        }
-        
-        // Redirect to home page on successful login
+        // No need to save token to localStorage; auth cookie is set by the API route
         router.push("/pages/home");
       } else {
         setError(data.message || "Login failed");
       }
     } catch (error) {
-      console.error("Login error:", error);
       setError("Network error. Please try again.");
     } finally {
       setIsLoading(false);
@@ -150,17 +138,15 @@ export default function Login() {
           </h2>
           <p className="text-black text-sm">Sign in to your account</p>
         </div>
-        
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           {error && (
             <div className="text-red-600 text-center mb-2 p-2 bg-red-50 rounded-lg border border-red-200">
               {error}
             </div>
           )}
-          
           <div>
-            <label 
-              className="block mb-2 text-sm font-semibold text-black" 
+            <label
+              className="block mb-2 text-sm font-semibold text-black"
               htmlFor="emailOrUsername"
             >
               Email or Username
@@ -179,10 +165,9 @@ export default function Login() {
               You can use either your email address or username
             </p>
           </div>
-          
           <div>
-            <label 
-              className="block mb-2 text-sm font-semibold text-black" 
+            <label
+              className="block mb-2 text-sm font-semibold text-black"
               htmlFor="password"
             >
               Password
@@ -198,7 +183,6 @@ export default function Login() {
               placeholder="••••••••"
             />
           </div>
-          
           <button
             type="submit"
             disabled={isLoading}
@@ -209,7 +193,6 @@ export default function Login() {
             {isLoading ? "Signing In..." : "Sign In"}
           </button>
         </form>
-        
         <div className="text-center text-sm text-black mt-2">
           <a href="#" className="text-cyan-500 hover:underline">
             Forgot password?
@@ -219,3 +202,4 @@ export default function Login() {
     </div>
   );
 }
+
