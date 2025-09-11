@@ -161,7 +161,7 @@ export default function Login() {
               autoComplete="username"
               placeholder="Enter your email or username"
             />
-            <p className="text-xs text-gray-600 mt-1">
+            <p className="text-xs text-red-600 mt-1">
               You can use either your email address or username
             </p>
           </div>
