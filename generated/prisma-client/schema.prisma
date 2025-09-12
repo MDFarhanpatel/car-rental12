@@ -1,3 +1,32 @@
+// generator client {
+//   provider = "prisma-client-js"
+//   output = "../generated/prisma-client"
+// }
+
+// datasource db {
+//   provider = "mongodb"
+//   url      = env("DB_URL")
+// }
+
+// enum role {
+//   USER
+//   ADMIN
+//   Hoster
+//   Driver
+//   provider
+//   customer
+//   mechanic
+
+// }
+// model user {
+//   id        String   @id @default(auto()) @map("_id") @db.ObjectId
+//   name      String
+//   username     String   @unique
+//   password  String
+//   role_id     role    
+//   is_active Boolean  @default(true)
+// }
+
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma-client"
@@ -19,10 +48,103 @@ enum role {
 }
 
 model user {
-  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String
-  username  String  @unique
+  username  String   @unique
+  email     String? // Make it optional temporarily
   password  String
   role_id   role
-  is_active Boolean @default(true)
+  is_active Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Brand {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  logo      String?
+  active    Boolean  @default(true)
+  models    Model[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Model {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  brandId   String    @db.ObjectId
+  brand     Brand     @relation(fields: [brandId], references: [id])
+  active    Boolean   @default(true)
+  variants  Variant[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Variant {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  modelId         String   @db.ObjectId
+  model           Model    @relation(fields: [modelId], references: [id])
+  fuelType        String?
+  transmission    String?
+  seatingCapacity Int?
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model State {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  code      String   @unique
+  active    Boolean  @default(true)
+  cities    City[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model City {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  stateId   String   @db.ObjectId
+  state     State    @relation(fields: [stateId], references: [id])
+  pincode   String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ChecklistCategory {
+  id          String          @id @default(auto()) @map("_id") @db.ObjectId
+  name        String          @unique
+  description String?
+  active      Boolean         @default(true)
+  items       ChecklistItem[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model ChecklistItem {
+  id          String            @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  categoryId  String            @db.ObjectId
+  category    ChecklistCategory @relation(fields: [categoryId], references: [id])
+  description String?
+  checkType   String? // e.g., 'boolean', 'text', 'number'
+  required    Boolean           @default(false)
+  active      Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model Setting {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  key         String   @unique
+  value       String
+  category    String // e.g., 'general', 'email', 'payment'
+  description String?
+  dataType    String? // e.g., 'string', 'number', 'boolean'
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

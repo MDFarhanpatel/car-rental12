@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
@@ -11,51 +11,45 @@ import { Tag } from "primereact/tag";
 import { Chip } from "primereact/chip";
 import { BreadCrumb } from "primereact/breadcrumb";
 
+// Updated roles to match your Prisma schema
 const roles = [
+  { label: "User", value: "USER" },
   { label: "Admin", value: "ADMIN" },
-  { label: "SuperAdmin", value: "SUPERADMIN" },
-  { label: "Customer", value: "CUSTOMER" },
-  { label: "Mechanic", value: "MECHANIC" },
-];
-
-const INITIAL_USERS = [
-  {
-    id: 1,
-    name: "jack ali",
-    email: "jack@gmail.com",
-    role: "ADMIN",
-    status: "Active",
-  },
-  {
-    id: 2,
-    name: "james lora",
-    email: "lora@gmail.com",
-    role: "HOSTER",
-    status: "Inactive",
-  },
-  {
-    id: 3,
-    name: "farhan",
-    email: "farhan@gmail.com",
-    role: "CUSTOMER",
-    status: "Active",
-  },
+  { label: "Hoster", value: "Hoster" },
+  { label: "Driver", value: "Driver" },
+  { label: "Provider", value: "provider" },
+  { label: "Customer", value: "customer" },
+  { label: "Mechanic", value: "mechanic" },
 ];
 
 export default function UsersPage() {
-  const [users, setUsers] = useState(INITIAL_USERS);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [addForm, setAddForm] = useState({
+    username: "",
     email: "",
     name: "",
     password: "",
     role: "",
   });
-  const [editForm, setEditForm] = useState({ email: "", name: "", role: "" });
-  const [addErrors, setAddErrors] = useState({ email: "", name: "", role: "" });
+  const [editForm, setEditForm] = useState({ 
+    username: "", 
+    email: "", 
+    name: "", 
+    role: "" 
+  });
+  const [addErrors, setAddErrors] = useState({ 
+    username: "", 
+    email: "", 
+    name: "", 
+    password: "", // ← ADDED password error
+    role: "" 
+  });
   const [editErrors, setEditErrors] = useState({
+    username: "",
     email: "",
     name: "",
     role: "",
@@ -68,22 +62,50 @@ export default function UsersPage() {
     { label: "Users" },
   ];
 
+  // Fetch users from API
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/v1/users");
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data.users || []);
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Failed to load users",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Role & Status badges
   const roleTemplate = (row) => (
     <Chip
-      label={row.role}
+      label={row.role_id}
       className="font-bold px-2 py-1 rounded-lg bg-gradient-to-r from-fuchsia-700 to-purple-600 text-white"
     />
   );
+
   const statusTemplate = (row) => (
     <Tag
-      value={row.status}
-      severity={row.status === "Active" ? "success" : "danger"}
+      value={row.is_active ? "Active" : "Inactive"}
+      severity={row.is_active ? "success" : "danger"}
       className="text-md px-3 py-1"
     />
   );
-  const actionBody = (row) =>
-    row.role === "ADMIN" && (
+
+  const actionBody = (row) => (
+    <div className="flex gap-2">
       <Button
         icon="pi pi-pencil"
         rounded
@@ -95,18 +117,29 @@ export default function UsersPage() {
         }}
         aria-label="Edit"
       />
-    );
+      <Button
+        icon="pi pi-trash"
+        rounded
+        severity="danger"
+        className="p-button-sm"
+        onClick={() => deleteUser(row)}
+        aria-label="Delete"
+      />
+    </div>
+  );
 
   // Add user handlers
   const openAdd = () => {
-    setAddForm({ email: "", name: "", password: "", role: "" });
-    setAddErrors({ email: "", name: "", role: "" });
+    setAddForm({ username: "", email: "", name: "", password: "", role: "" });
+    setAddErrors({ username: "", email: "", name: "", password: "", role: "" }); // ← ADDED password error
     setShowAdd(true);
   };
+
   const validateField = (field, value) =>
     !value || value.trim() === ""
       ? `${field.charAt(0).toUpperCase() + field.slice(1)} is required.`
       : "";
+
   const handleAddChange = (e) => {
     const { name, value } = e.target
       ? e.target
@@ -114,34 +147,74 @@ export default function UsersPage() {
     setAddForm((prev) => ({ ...prev, [name]: value }));
     setAddErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
   };
-  const saveAdd = () => {
+
+  const saveAdd = async () => {
     const errors = {
+      username: validateField("username", addForm.username),
       email: validateField("email", addForm.email),
       name: validateField("name", addForm.name),
+      password: validateField("password", addForm.password), // ← ADDED password validation
       role: validateField("role", addForm.role),
     };
     setAddErrors(errors);
-    if (errors.email || errors.name || errors.role) return;
-    setUsers([
-      ...users,
-      { id: users.length + 1, ...addForm, status: "Active" },
-    ]);
-    setShowAdd(false);
-    toast.current.show({
-      severity: "success",
-      summary: "User Added",
-      detail: `${addForm.name} was added successfully!`,
-      life: 2100,
-    });
+    
+    if (Object.values(errors).some(error => error)) return;
+
+    try {
+      const response = await fetch("/api/v1/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: addForm.username,
+          email: addForm.email,
+          name: addForm.name,
+          password: addForm.password,
+          role: addForm.role,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setShowAdd(false);
+        fetchUsers(); // Refresh the users list
+        toast.current?.show({
+          severity: "success",
+          summary: "User Added",
+          detail: `${addForm.name} was added successfully!`,
+          life: 2100,
+        });
+      } else {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: data.message || "Failed to add user",
+          life: 3000,
+        });
+      }
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Failed to add user",
+        life: 3000,
+      });
+    }
   };
 
   // Edit user handlers
   const openEdit = (row) => {
     setSelectedUser(row);
-    setEditForm({ email: row.email, name: row.name, role: row.role });
-    setEditErrors({ email: "", name: "", role: "" });
+    setEditForm({ 
+      username: row.username,
+      email: row.email || "",
+      name: row.name, 
+      role: row.role_id 
+    });
+    setEditErrors({ username: "", email: "", name: "", role: "" });
     setShowEdit(true);
   };
+
   const handleEditChange = (e) => {
     const { name, value } = e.target
       ? e.target
@@ -149,45 +222,106 @@ export default function UsersPage() {
     setEditForm((prev) => ({ ...prev, [name]: value }));
     setEditErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
   };
-  const saveEdit = () => {
+
+  const saveEdit = async () => {
     const errors = {
+      username: validateField("username", editForm.username),
       email: validateField("email", editForm.email),
       name: validateField("name", editForm.name),
       role: validateField("role", editForm.role),
     };
     setEditErrors(errors);
-    if (errors.email || errors.name || errors.role) return;
-    setUsers(
-      users.map((user) =>
-        user.id === selectedUser.id ? { ...user, ...editForm } : user
-      )
-    );
-    setShowEdit(false);
-    toast.current.show({
-      severity: "success",
-      summary: "User Updated",
-      detail: "User information saved!",
-      life: 2100,
-    });
+    
+    if (Object.values(errors).some(error => error)) return;
+
+    try {
+      const response = await fetch(`/api/v1/users/${selectedUser.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: editForm.username,
+          email: editForm.email,
+          name: editForm.name,
+          role_id: editForm.role,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setShowEdit(false);
+        fetchUsers(); // Refresh the users list
+        toast.current?.show({
+          severity: "success",
+          summary: "User Updated",
+          detail: "User information saved!",
+          life: 2100,
+        });
+      } else {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: data.message || "Failed to update user",
+          life: 3000,
+        });
+      }
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Failed to update user",
+        life: 3000,
+      });
+    }
   };
 
-  const activeCount = users.filter((u) => u.status === "Active").length;
-  const inactiveCount = users.filter((u) => u.status !== "Active").length;
+  // Delete user
+  const deleteUser = async (user) => {
+    if (window.confirm(`Are you sure you want to delete ${user.name}?`)) {
+      try {
+        const response = await fetch(`/api/v1/users/${user.id}`, {
+          method: "DELETE",
+        });
+
+        if (response.ok) {
+          fetchUsers(); // Refresh the users list
+          toast.current?.show({
+            severity: "success",
+            summary: "User Deleted",
+            detail: `${user.name} was deleted successfully!`,
+            life: 2100,
+          });
+        } else {
+          throw new Error("Failed to delete user");
+        }
+      } catch (error) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Failed to delete user",
+          life: 3000,
+        });
+      }
+    }
+  };
+
+  const activeCount = users.filter((u) => u.is_active).length;
+  const inactiveCount = users.filter((u) => !u.is_active).length;
 
   const addSaveDisabled =
+    !addForm.username.trim() ||
     !addForm.email.trim() ||
     !addForm.name.trim() ||
+    !addForm.password.trim() || // ← ADDED password check
     !addForm.role ||
-    addErrors.email ||
-    addErrors.name ||
-    addErrors.role;
+    Object.values(addErrors).some(error => error);
+
   const editSaveDisabled =
+    !editForm.username.trim() ||
     !editForm.email.trim() ||
     !editForm.name.trim() ||
     !editForm.role ||
-    editErrors.email ||
-    editErrors.name ||
-    editErrors.role;
+    Object.values(editErrors).some(error => error);
 
   return (
     <div className="p-4 min-h-screen bg-gradient-to-r from-gray-950 via-gray-900 to-fuchsia-900 font-sans">
@@ -203,7 +337,7 @@ export default function UsersPage() {
         />
       </div>
       <div className="text-3xl font-extrabold text-white mb-3 tracking-wide">
-        Users
+        Users Management
       </div>
       <div className="flex flex-wrap gap-4 mb-6 items-center">
         <span className="font-extrabold text-white flex items-center">
@@ -230,7 +364,8 @@ export default function UsersPage() {
           value={users}
           stripedRows
           paginator
-          rows={5}
+          rows={10}
+          loading={loading}
           className="p-datatable-sm text-white"
           emptyMessage="No users found."
         >
@@ -239,16 +374,20 @@ export default function UsersPage() {
             header={<span className="font-bold text-base">Name</span>}
           />
           <Column
+            field="username"
+            header={<span className="font-bold text-base">Username</span>}
+          />
+          <Column
             field="email"
             header={<span className="font-bold text-base">Email</span>}
           />
           <Column
-            field="role"
+            field="role_id"
             header={<span className="font-bold text-base">Role</span>}
             body={roleTemplate}
           />
           <Column
-            field="status"
+            field="is_active"
             header={<span className="font-bold text-base">Status</span>}
             body={statusTemplate}
           />
@@ -259,7 +398,7 @@ export default function UsersPage() {
         </DataTable>
       </div>
 
-      {/* Add User Drawer */}
+      {/* Add User Dialog */}
       <Dialog
         header={
           <span className="text-xl font-extrabold text-fuchsia-700">
@@ -268,13 +407,31 @@ export default function UsersPage() {
         }
         visible={showAdd}
         position="right"
-        style={{ width: "380px", maxWidth: "100vw" }}
+        style={{ width: "400px", maxWidth: "100vw" }}
         modal
         blockScroll
         className="rounded-lg shadow-xl"
         onHide={() => setShowAdd(false)}
       >
         <form className="flex flex-col gap-2 p-1">
+          <label className="font-bold text-base text-gray-700 mt-1">
+            Username <span className="text-red-600">*</span>
+          </label>
+          <InputText
+            name="username"
+            value={addForm.username}
+            className={`w-full p-2 text-base rounded-lg ${
+              addErrors.username && "border border-red-500"
+            }`}
+            onChange={handleAddChange}
+            placeholder="Username"
+          />
+          {addErrors.username && (
+            <span className="text-red-500 text-xs font-semibold">
+              {addErrors.username}
+            </span>
+          )}
+
           <label className="font-bold text-base text-gray-700 mt-1">
             Name <span className="text-red-600">*</span>
           </label>
@@ -298,6 +455,7 @@ export default function UsersPage() {
           </label>
           <InputText
             name="email"
+            type="email"
             value={addForm.email}
             className={`w-full p-2 text-base rounded-lg ${
               addErrors.email && "border border-red-500"
@@ -312,16 +470,23 @@ export default function UsersPage() {
           )}
 
           <label className="font-bold text-base text-gray-700 mt-1">
-            Password
+            Password <span className="text-red-600">*</span>
           </label>
           <InputText
             name="password"
             type="password"
-            className="w-full p-2 text-base rounded-lg"
+            className={`w-full p-2 text-base rounded-lg ${
+              addErrors.password && "border border-red-500"
+            }`} // ← ADDED error styling
             value={addForm.password}
             onChange={handleAddChange}
             placeholder="Password"
           />
+          {addErrors.password && ( // ← ADDED password error display
+            <span className="text-red-500 text-xs font-semibold">
+              {addErrors.password}
+            </span>
+          )}
 
           <label className="font-bold text-base text-gray-700 mt-1">
             Role <span className="text-red-600">*</span>
@@ -358,7 +523,7 @@ export default function UsersPage() {
         </div>
       </Dialog>
 
-      {/* Edit User Drawer */}
+      {/* Edit User Dialog */}
       <Dialog
         header={
           <span className="text-xl font-extrabold text-fuchsia-700">
@@ -367,13 +532,31 @@ export default function UsersPage() {
         }
         visible={showEdit}
         position="right"
-        style={{ width: "380px", maxWidth: "100vw" }}
+        style={{ width: "400px", maxWidth: "100vw" }}
         modal
         blockScroll
         className="rounded-lg shadow-xl"
         onHide={() => setShowEdit(false)}
       >
         <form className="flex flex-col gap-2 p-1">
+          <label className="font-bold text-base text-gray-700 mt-1">
+            Username <span className="text-red-600">*</span>
+          </label>
+          <InputText
+            name="username"
+            value={editForm.username}
+            className={`w-full p-2 text-base rounded-lg ${
+              editErrors.username && "border border-red-500"
+            }`}
+            onChange={handleEditChange}
+            placeholder="Username"
+          />
+          {editErrors.username && (
+            <span className="text-red-500 text-xs font-semibold">
+              {editErrors.username}
+            </span>
+          )}
+
           <label className="font-bold text-base text-gray-700 mt-1">
             Name <span className="text-red-600">*</span>
           </label>
@@ -397,6 +580,7 @@ export default function UsersPage() {
           </label>
           <InputText
             name="email"
+            type="email"
             value={editForm.email}
             className={`w-full p-2 text-base rounded-lg ${
               editErrors.email && "border border-red-500"

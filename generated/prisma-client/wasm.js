@@ -117,9 +117,94 @@ exports.Prisma.UserScalarFieldEnum = {
   id: 'id',
   name: 'name',
   username: 'username',
+  email: 'email',
   password: 'password',
   role_id: 'role_id',
-  is_active: 'is_active'
+  is_active: 'is_active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.BrandScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  logo: 'logo',
+  active: 'active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.ModelScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  brandId: 'brandId',
+  active: 'active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.VariantScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  modelId: 'modelId',
+  fuelType: 'fuelType',
+  transmission: 'transmission',
+  seatingCapacity: 'seatingCapacity',
+  active: 'active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.StateScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  code: 'code',
+  active: 'active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.CityScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  stateId: 'stateId',
+  pincode: 'pincode',
+  active: 'active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.ChecklistCategoryScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  description: 'description',
+  active: 'active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.ChecklistItemScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  categoryId: 'categoryId',
+  description: 'description',
+  checkType: 'checkType',
+  required: 'required',
+  active: 'active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.SettingScalarFieldEnum = {
+  id: 'id',
+  key: 'key',
+  value: 'value',
+  category: 'category',
+  description: 'description',
+  dataType: 'dataType',
+  active: 'active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 };
 
 exports.Prisma.SortOrder = {
@@ -142,7 +227,15 @@ exports.role = exports.$Enums.role = {
 };
 
 exports.Prisma.ModelName = {
-  user: 'user'
+  user: 'user',
+  Brand: 'Brand',
+  Model: 'Model',
+  Variant: 'Variant',
+  State: 'State',
+  City: 'City',
+  ChecklistCategory: 'ChecklistCategory',
+  ChecklistItem: 'ChecklistItem',
+  Setting: 'Setting'
 };
 
 /**
