@@ -12,7 +12,7 @@ export default function DashboardHome() {
   ];
 
   return (
-    <div className="p-4 min-h-screen bg-gradient-to-r from-gray-950 via-gray-900 to-fuchsia-900 font-sans">
+    <div className="p-4 min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {stats.map((item, index) => (
           <Card

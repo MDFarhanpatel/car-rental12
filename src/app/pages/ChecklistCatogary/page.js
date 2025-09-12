@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
@@ -7,19 +7,17 @@ import { Toast } from "primereact/toast";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { BreadCrumb } from "primereact/breadcrumb";
+import { ProgressBar } from "primereact/progressbar";
 
 export default function ChecklistCategoriesPage() {
-  // Active flag added for demo counts
-  const [categories, setCategories] = useState([
-    { name: "Exterior", description: "Exterior checks", active: true },
-    { name: "Interior", description: "Interior checks", active: false },
-    { name: "Engine", description: "Engine checks", active: true },
-  ]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [editingIndex, setEditingIndex] = useState(null);
+  const [editingCategory, setEditingCategory] = useState(null);
   const [form, setForm] = useState({ name: "", description: "", active: true });
   const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
   const toast = useRef(null);
 
   // Breadcrumb items
@@ -33,17 +31,56 @@ export default function ChecklistCategoriesPage() {
   const activeCount = categories.filter(c => c.active).length;
   const inactiveCount = categories.length - activeCount;
 
+  // Fetch categories on component mount
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/v1/checklistcatogary');
+      const data = await response.json();
+      
+      if (data.success) {
+        setCategories(data.data || []);
+      } else {
+        console.error('Failed to fetch categories:', data.error);
+        toast.current?.show({
+          severity: 'error',
+          summary: 'Error',
+          detail: data.error || 'Failed to fetch categories',
+          life: 3000
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to fetch categories',
+        life: 3000
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const openAdd = () => {
     setForm({ name: "", description: "", active: true });
     setErrors({});
+    setEditingCategory(null);
     setShowAddDialog(true);
   };
 
-  const openEdit = (rowIndex) => {
-    const cat = categories[rowIndex];
-    setForm({ name: cat.name, description: cat.description, active: cat.active });
+  const openEdit = (category) => {
+    setForm({ 
+      name: category.name, 
+      description: category.description, 
+      active: category.active 
+    });
     setErrors({});
-    setEditingIndex(rowIndex);
+    setEditingCategory(category);
     setShowEditDialog(true);
   };
 
@@ -55,42 +92,167 @@ export default function ChecklistCategoriesPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const saveAddCategory = () => {
+  const saveAddCategory = async () => {
     if (!validate()) return;
-    setCategories(prev => [...prev, form]);
-    toast.current.show({ severity: "success", summary: "Category Added", detail: form.name, life: 1800 });
-    setShowAddDialog(false);
+    
+    try {
+      setSaving(true);
+      const response = await fetch('/api/v1/checklistcatogary', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(form),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        await fetchCategories(); // Refresh the list
+        setShowAddDialog(false);
+        
+        // Show success toast
+        setTimeout(() => {
+          toast.current?.show({
+            severity: 'success',
+            summary: 'Success',
+            detail: `Category "${form.name}" added successfully`,
+            life: 3000
+          });
+        }, 100);
+      } else {
+        toast.current?.show({
+          severity: 'error',
+          summary: 'Error',
+          detail: data.error || 'Failed to add category',
+          life: 3000
+        });
+      }
+    } catch (error) {
+      console.error('Error adding category:', error);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to add category',
+        life: 3000
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const saveEditCategory = () => {
+  const saveEditCategory = async () => {
     if (!validate()) return;
-    setCategories(prev =>
-      prev.map((cat, i) => (i === editingIndex ? form : cat))
-    );
-    toast.current.show({ severity: "success", summary: "Category Updated", detail: form.name, life: 1800 });
-    setShowEditDialog(false);
+    
+    try {
+      setSaving(true);
+      const response = await fetch('/api/v1/checklistcatogary', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ...form, id: editingCategory.id }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        await fetchCategories(); // Refresh the list
+        setShowEditDialog(false);
+        
+        // Show success toast
+        setTimeout(() => {
+          toast.current?.show({
+            severity: 'success',
+            summary: 'Success',
+            detail: `Category "${form.name}" updated successfully`,
+            life: 3000
+          });
+        }, 100);
+      } else {
+        toast.current?.show({
+          severity: 'error',
+          summary: 'Error',
+          detail: data.error || 'Failed to update category',
+          life: 3000
+        });
+      }
+    } catch (error) {
+      console.error('Error updating category:', error);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to update category',
+        life: 3000
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const addDialogFooter = (
     <Button
-      label="Save"
-      icon="pi pi-check"
+      label={saving ? "Saving..." : "Save"}
+      icon={saving ? "pi pi-spin pi-spinner" : "pi pi-check"}
       className="w-full mt-4 bg-black font-extrabold border-none py-3 rounded-md"
       onClick={saveAddCategory}
+      disabled={saving}
     />
   );
 
   const editDialogFooter = (
     <Button
-      label="Save"
-      icon="pi pi-check"
+      label={saving ? "Saving..." : "Save"}
+      icon={saving ? "pi pi-spin pi-spinner" : "pi pi-check"}
       className="w-full mt-4 bg-black font-extrabold border-none py-3 rounded-md"
       onClick={saveEditCategory}
+      disabled={saving}
     />
   );
 
+  const actionBodyTemplate = (rowData) => {
+    return (
+      <Button 
+        icon="pi pi-pencil" 
+        rounded 
+        className="p-button-sm p-button-outlined p-button-secondary"
+        style={{ 
+          backgroundColor: '#3b82f6', 
+          borderColor: '#3b82f6',
+          color: 'white'
+        }}
+        onClick={() => openEdit(rowData)} 
+        aria-label="Edit"
+        tooltip="Edit Category"
+      />
+    );
+  };
+
+  const statusBodyTemplate = (rowData) => {
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+        rowData.active 
+          ? 'bg-green-100 text-green-800' 
+          : 'bg-red-100 text-red-800'
+      }`}>
+        {rowData.active ? 'Active' : 'Inactive'}
+      </span>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="p-4 min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
+        <div className="flex flex-column align-items-center justify-content-center" style={{ minHeight: '400px' }}>
+          <ProgressBar mode="indeterminate" style={{ height: '6px', width: '300px' }} />
+          <p className="text-white mt-3">Loading categories...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-4 min-h-screen bg-gradient-to-r from-gray-950 via-gray-900 to-fuchsia-900 font-sans">
+    <div className="p-4 min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
       <Toast ref={toast} />
       <div className="mb-4">
         <BreadCrumb model={breadcrumbItems} home={{ icon: "pi pi-home" }} className="text-white font-bold" />
@@ -98,30 +260,56 @@ export default function ChecklistCategoriesPage() {
 
       <div className="text-3xl font-extrabold text-white mb-3">Checklist Categories</div>
       <div className="flex flex-wrap gap-4 mb-6 items-center">
-        <span className="font-extrabold text-green-400 flex items-center"><i className="pi pi-check mr-1" />{activeCount} Active</span>
-        <span className="font-extrabold text-rose-400 flex items-center"><i className="pi pi-times mr-1" />{inactiveCount} Inactive</span>
-        <span className="font-extrabold text-indigo-200 flex items-center"><i className="pi pi-list mr-1" />{categories.length} Total Checklist Categories</span>
-        <Button label="Add Category" icon="pi pi-plus" className="ml-auto bg-black border-none font-bold" onClick={openAdd} />
+        <span className="font-extrabold text-green-400 flex items-center">
+          <i className="pi pi-check mr-1" />
+          {activeCount} Active
+        </span>
+        <span className="font-extrabold text-rose-400 flex items-center">
+          <i className="pi pi-times mr-1" />
+          {inactiveCount} Inactive
+        </span>
+        <span className="font-extrabold text-indigo-200 flex items-center">
+          <i className="pi pi-list mr-1" />
+          {categories.length} Total Categories
+        </span>
+        <Button 
+          label="Add Category" 
+          icon="pi pi-plus" 
+          className="ml-auto bg-black border-none font-bold hover:bg-gray-800" 
+          onClick={openAdd} 
+        />
       </div>
+      
       <div className="bg-zinc-900 p-6 rounded-2xl shadow-2xl overflow-x-auto">
-        <DataTable value={categories} stripedRows paginator rows={5} className="p-datatable-sm text-white" emptyMessage="No checklist categories found.">
-          <Column field="name" header="Category Name" />
-          <Column field="description" header="Description" />
-          <Column body={rowData => (
-            <span>{rowData.active ? "Active" : "Inactive"}</span>
-          )} header="Status" />
-          <Column
-            body={(_, { rowIndex }) => (
-              <Button icon="pi pi-pencil" rounded className="p-button-sm" onClick={() => openEdit(rowIndex)} aria-label="Edit" />
+        <DataTable 
+          value={categories} 
+          stripedRows 
+          paginator 
+          rows={10} 
+          className="p-datatable-sm text-white" 
+          emptyMessage="No checklist categories found."
+          loading={loading}
+        >
+          <Column field="name" header="Category Name" sortable />
+          <Column field="description" header="Description" sortable />
+          <Column body={statusBodyTemplate} header="Status" sortable field="active" />
+          <Column 
+            field="itemsCount" 
+            header="Items" 
+            sortable 
+            body={(rowData) => (
+              <span className="text-blue-300">
+                {rowData.itemsCount || 0} items
+              </span>
             )}
-            header="Actions"
           />
+          <Column body={actionBodyTemplate} header="Actions" style={{ width: '8rem' }} />
         </DataTable>
       </div>
 
       {/* Add Category Dialog */}
       <Dialog
-        header="Add Checklist Category"
+        header={<span className="text-xl font-extrabold text-purple-700">Add Checklist Category</span>}
         visible={showAddDialog}
         position="right"
         modal
@@ -153,7 +341,7 @@ export default function ChecklistCategoriesPage() {
 
       {/* Edit Category Dialog */}
       <Dialog
-        header="Edit Checklist Category"
+        header={<span className="text-xl font-extrabold text-purple-700">Edit Checklist Category</span>}
         visible={showEditDialog}
         position="right"
         modal

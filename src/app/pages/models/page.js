@@ -17,11 +17,12 @@ export default function ModelsPage() {
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-  const [form, setForm] = useState({ 
-    name: "", 
+  const [form, setForm] = useState({
+    name: "",
+    brand: "",
     logoFile: null,
     logoPreview: null,
-    active: true 
+    active: true,
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -30,60 +31,49 @@ export default function ModelsPage() {
   const fileUploadRef = useRef(null);
 
   const breadcrumbItems = [
-    { label: "Home", command: () => window.location.href = "/" },
-    { label: "Admin", command: () => window.location.href = "/admin" },
+    { label: "Home", command: () => (window.location.href = "/") },
+    { label: "Admin", command: () => (window.location.href = "/admin") },
     { label: "Models" },
   ];
 
-  // Handle window object safely
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 640);
-    };
-    
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
     handleResize();
-    window.addEventListener('resize', handleResize);
-    
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Get current user from JWT token
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
       try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
+        const payload = JSON.parse(atob(token.split(".")[1]));
         setCurrentUser(payload);
       } catch (error) {
-        console.error('Error decoding token:', error);
+        console.error("Error decoding token:", error);
       }
     }
   }, []);
 
-  // Check if user is admin
-  const isAdmin = () => {
-    return currentUser?.role_id === 'ADMIN' || currentUser?.role === 'ADMIN';
-  };
+  const isAdmin = () =>
+    currentUser?.role_id === "ADMIN" || currentUser?.role === "ADMIN";
 
-  // Fetch data from APIs
   useEffect(() => {
     fetchModels();
   }, []);
 
   const fetchModels = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const response = await fetch("/api/v1/models");
-      if (response.ok) {
-        const data = await response.json();
-        setModels(data.models);
-      }
+      if (!response.ok) throw new Error("Failed to fetch models");
+      const data = await response.json();
+      setModels(data.models);
     } catch (error) {
-      console.error("Error fetching models:", error);
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Failed to load models",
+        detail: error.message || "Failed to load models",
         life: 3000,
       });
     } finally {
@@ -91,51 +81,32 @@ export default function ModelsPage() {
     }
   };
 
-  // Templates for table columns
-  const logoBodyTemplate = (rowData) => (
-    <div className="flex justify-center">
-      {rowData.brand?.logo ? (
-        <img
-          src={rowData.brand?.logo}
-          alt={rowData.name}
-          className="w-8 h-8 sm:w-10 sm:h-10 rounded object-contain bg-white p-1"
-        />
-      ) : (
-        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-200 rounded flex items-center justify-center">
-          <i className="pi pi-image text-gray-400 text-xs"></i>
-        </div>
-      )}
-    </div>
-  );
-
   const statusBodyTemplate = (rowData) => (
-    <div className="flex justify-center">
-      <span className={`px-2 py-1 rounded text-xs font-medium ${
-        rowData.active 
-          ? 'bg-green-600 text-black' 
-          : 'bg-red-600 text-black'
-      }`}>
-        {rowData.active ? "Active" : "Inactive"}
-      </span>
-    </div>
+    <span
+      className={`px-2 py-1 rounded font-medium text-xm ${
+        rowData.active ? "bg-green-500 text-gray-400" : "bg-red-500 text-gray-400"
+      }`}
+    >
+      {rowData.active ? "Active" : "Inactive"}
+    </span>
   );
 
   const actionBodyTemplate = (rowData) => (
-    <div className="flex gap-1 sm:gap-2 justify-center">
-      <Button 
-        icon="pi pi-pencil" 
-        rounded 
+    <div className="flex gap-2 justify-start ml-3">
+      <Button
+        icon="pi pi-pencil"
+        rounded
         severity="secondary"
-        className="p-button-sm w-6 h-6 sm:w-8 sm:h-8" 
-        onClick={() => openEdit(rowData)} 
-        aria-label="Edit" 
+        className="p-button-sm"
+        onClick={() => openEdit(rowData)}
+        aria-label="Edit"
       />
       {isAdmin() && (
         <Button
           icon="pi pi-trash"
           rounded
           severity="danger"
-          className="p-button-sm w-6 h-6 sm:w-8 sm:h-8"
+          className="p-button-sm"
           onClick={() => deleteModel(rowData)}
           aria-label="Delete"
         />
@@ -143,18 +114,18 @@ export default function ModelsPage() {
     </div>
   );
 
-  // Calculate stats
   const activeCount = models.filter((m) => m.active).length;
   const inactiveCount = models.length - activeCount;
 
-  // Dialog functions
+  // Allow only local data update, no insertion to server
   const openAdd = () => {
     setEditing(null);
-    setForm({ 
-      name: "", 
+    setForm({
+      name: "",
+      brand: "",
       logoFile: null,
       logoPreview: null,
-      active: true 
+      active: true,
     });
     setErrors({});
     setShowDialog(true);
@@ -162,32 +133,36 @@ export default function ModelsPage() {
 
   const openEdit = (model) => {
     setEditing(model);
-    setForm({ 
+    setForm({
       name: model.name,
+      brand: model.brand?.name || "",
       logoFile: null,
       logoPreview: model.brand?.logo || null,
-      active: model.active 
+      active: model.active,
     });
     setErrors({});
     setShowDialog(true);
   };
 
   const onInputChange = (e) => {
-    const { name, value, checked, type } = e.target;
+    const { name, value, checked } = e.target;
     if (name === "active") {
       setForm((f) => ({ ...f, active: checked }));
-    } else if (name === "name") {
-      setForm((f) => ({ ...f, name: value }));
-      setErrors((e) => ({ ...e, name: value.trim() ? "" : "Model name is required." }));
+    } else {
+      setForm((f) => ({ ...f, [name]: value }));
+      setErrors((e) => ({
+        ...e,
+        [name]: value.trim()
+          ? ""
+          : `${name[0].toUpperCase() + name.slice(1)} is required.`,
+      }));
     }
   };
 
-  // Handle file upload
   const onFileSelect = (e) => {
     const file = e.files[0];
     if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
+      if (!file.type.startsWith("image/")) {
         toast.current?.show({
           severity: "error",
           summary: "Invalid file",
@@ -196,7 +171,6 @@ export default function ModelsPage() {
         });
         return;
       }
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast.current?.show({
           severity: "error",
@@ -206,91 +180,75 @@ export default function ModelsPage() {
         });
         return;
       }
-      setForm(prev => ({ ...prev, logoFile: file }));
-      
-      // Create preview URL
+      setForm((prev) => ({ ...prev, logoFile: file }));
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setForm(prev => ({ ...prev, logoPreview: e.target.result }));
-      };
+      reader.onload = (e) =>
+        setForm((prev) => ({ ...prev, logoPreview: e.target.result }));
       reader.readAsDataURL(file);
     }
   };
 
-  // Validation
   const validate = () => {
     const newErrors = {};
     if (!form.name.trim()) newErrors.name = "Model name is required.";
+    if (!form.brand.trim()) newErrors.brand = "Brand is required.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Convert file to base64 for API
-  const fileToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = error => reject(error);
-    });
-  };
-
-  // Save model to API
+  // The saveModel here modifies local state only, no API call
   const saveModel = async () => {
     if (!validate()) return;
     setSaving(true);
-    
     try {
+      // Prepare logo data for local model (base64 preview or null)
       let logoUrl = form.logoPreview;
-      // If new file is selected, convert to base64
-      if (form.logoFile) {
-        logoUrl = await fileToBase64(form.logoFile);
-      }
 
-      const modelData = {
-        name: form.name.trim(),
-        logo: logoUrl || null,
-        active: form.active
-      };
-
-      let response;
       if (editing) {
-        response = await fetch(`/api/v1/models/${editing.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(modelData),
-        });
-      } else {
-        response = await fetch("/api/v1/models", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(modelData),
-        });
-      }
-
-      const data = await response.json();
-      if (response.ok) {
-        setShowDialog(false);
-        fetchModels();
+        // Update model locally
+        setModels((prev) =>
+          prev.map((m) =>
+            m === editing
+              ? {
+                  ...m,
+                  name: form.name.trim(),
+                  brand: { name: form.brand.trim(), logo: logoUrl },
+                  logo: logoUrl,
+                  active: form.active,
+                }
+              : m
+          )
+        );
         toast.current?.show({
           severity: "success",
-          summary: editing ? "Model Updated" : "Model Added",
+          summary: "Model Updated",
           detail: form.name,
           life: 2000,
         });
       } else {
+        // Add to local list only with temporary id
+        const newModel = {
+          id: models.length + 1,
+          name: form.name.trim(),
+          brand: { name: form.brand.trim(), logo: logoUrl },
+          logo: logoUrl,
+          active: form.active,
+        };
+        setModels((prev) => [...prev, newModel]);
         toast.current?.show({
-          severity: "error",
-          summary: "Error",
-          detail: data.message || `Failed to ${editing ? 'update' : 'add'} model`,
-          life: 3000,
+          severity: "success",
+          summary: "Model Added",
+          detail: form.name,
+          life: 2000,
         });
       }
+      setShowDialog(false);
+      setEditing(null);
     } catch (error) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: `Failed to ${editing ? 'update' : 'add'} model`,
+        detail: "Failed to save model locally",
         life: 3000,
       });
     } finally {
@@ -298,8 +256,8 @@ export default function ModelsPage() {
     }
   };
 
-  // Delete model function (admin only)
-  const deleteModel = async (model) => {
+  // Delete model locally only
+  const deleteModel = (model) => {
     if (!isAdmin()) {
       toast.current?.show({
         severity: "warn",
@@ -309,93 +267,58 @@ export default function ModelsPage() {
       });
       return;
     }
-
     if (window.confirm(`Are you sure you want to delete ${model.name}?`)) {
-      try {
-        const response = await fetch(`/api/v1/models/${model.id}`, {
-          method: "DELETE",
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-          fetchModels();
-          toast.current?.show({
-            severity: "success",
-            summary: "Model Deleted",
-            detail: `${model.name} was deleted successfully!`,
-            life: 2000,
-          });
-        } else {
-          toast.current?.show({
-            severity: "error",
-            summary: "Error",
-            detail: data.message || "Failed to delete model",
-            life: 3000,
-          });
-        }
-      } catch (error) {
-        toast.current?.show({
-          severity: "error",
-          summary: "Error",
-          detail: "Failed to delete model",
-          life: 3000,
-        });
-      }
+      setModels((prev) => prev.filter((m) => m !== model));
+      toast.current?.show({
+        severity: "success",
+        summary: "Model Deleted",
+        detail: `${model.name} was deleted!`,
+        life: 2000,
+      });
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-gray-950 via-gray-900 to-fuchsia-900 font-sans">
+    <div className="min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
       <Toast ref={toast} />
-      
-      {/* Mobile-responsive container */}
       <div className="p-2 sm:p-4 lg:p-6">
-        
-        {/* Breadcrumb - Hidden on very small screens */}
         <div className="hidden sm:block mb-4">
-          <BreadCrumb 
+          <BreadCrumb
             model={breadcrumbItems}
-            home={{ icon: "pi pi-home", command: () => window.location.href = "/" }}
+            home={{ icon: "pi pi-home", command: () => (window.location.href = "/") }}
             className="text-white font-bold text-sm"
           />
         </div>
-
-        {/* Header - Responsive */}
         <div className="mb-4 sm:mb-6">
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white mb-2">
             Car Models
           </h1>
           {currentUser && (
             <span className="text-xs sm:text-sm text-gray-300">
-              (Logged in as: {currentUser.role_id || currentUser.role || 'User'})
+              (Logged in as: {currentUser.role_id || currentUser.role || "User"})
             </span>
           )}
         </div>
-
-        {/* Stats and Add Button - Mobile responsive */}
         <div className="flex flex-wrap gap-2 sm:gap-4 mb-4 sm:mb-6 items-center text-xs sm:text-sm">
           <span className="font-bold text-white flex items-center">
             <i className="pi pi-check mr-1" />
-            {activeCount} Active
+            {models.filter((m) => m.active).length} Active
           </span>
           <span className="font-bold text-rose-400 flex items-center">
             <i className="pi pi-times mr-1" />
-            {inactiveCount} Inactive
+            {models.length - models.filter((m) => m.active).length} Inactive
           </span>
           <span className="font-bold text-white flex items-center">
             <i className="pi pi-list mr-1" />
             {models.length} Total
           </span>
-          <Button 
-            label="Add Model" 
-            icon="pi pi-plus" 
-            className="ml-auto bg-gradient-to-r from-fuchsia-700 to-purple-600 border-none font-bold px-3 py-1 sm:px-6 sm:py-2 text-xs sm:text-sm lg:text-base rounded-lg hover:scale-105 transition-transform" 
-            onClick={openAdd} 
+          <Button
+            label="Add Model"
+            icon="pi pi-plus"
+            className="ml-auto bg-gradient-to-r from-fuchsia-700 to-purple-600 border-none font-bold px-3 py-1 sm:px-6 sm:py-2 text-xs sm:text-sm lg:text-base rounded-lg hover:scale-105 transition-transform"
+            onClick={openAdd}
           />
         </div>
-
-        {/* Data Table - Mobile responsive with Equal Column Spacing */}
         <div className="bg-zinc-900 p-2 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl shadow-2xl overflow-x-auto">
           <DataTable
             value={models}
@@ -406,34 +329,35 @@ export default function ModelsPage() {
             className="p-datatable-sm text-white text-xs sm:text-sm"
             emptyMessage="No models found."
             responsiveLayout="scroll"
-            tableStyle={{ tableLayout: 'fixed', width: '100%' }}
+            tableStyle={{ tableLayout: "fixed", width: "100%" }}
           >
-            <Column 
-              field="name" 
-              header="Model Name" 
+            <Column
+              field="name"
+              header="Model"
               className="text-xs sm:text-sm font-medium"
-              style={{ width: '25%' }}
+              style={{ width: "25%" }}
             />
-            <Column 
-              header="Logo" 
-              body={logoBodyTemplate} 
-              style={{ width: '25%' }}
+            <Column
+              field="brand.name"
+              header="Brand"
+              className="text-xs sm:text-sm font-medium"
+              body={(rowData) => rowData.brand?.name || ""}
+              style={{ width: "25%" }}
             />
             <Column
               header="Status"
               body={statusBodyTemplate}
-              style={{ width: '25%' }}
+              style={{ width: "25%" }}
             />
-            <Column 
-              header="Actions" 
-              body={actionBodyTemplate} 
-              style={{ width: '25%' }}
+            <Column
+              header="Action"
+              body={actionBodyTemplate}
+              style={{ width: "25%" }}
             />
           </DataTable>
         </div>
       </div>
 
-      {/* Mobile-responsive Dialog */}
       <Dialog
         header={
           <span className="text-lg sm:text-xl font-bold text-fuchsia-700">
@@ -445,16 +369,14 @@ export default function ModelsPage() {
         modal
         blockScroll
         className="rounded-lg shadow-xl"
-        style={{ 
-          width: isMobile ? "95vw" : "400px", 
+        style={{
+          width: isMobile ? "95vw" : "400px",
           maxWidth: "100vw",
-          margin: isMobile ? "10px" : "0"
+          margin: isMobile ? "10px" : "0",
         }}
         onHide={() => setShowDialog(false)}
       >
         <div className="flex flex-col gap-4 p-2 sm:p-4">
-          
-          {/* Model Name Input */}
           <div>
             <label className="font-bold text-sm text-gray-700 block mb-2">
               Model Name <span className="text-red-600">*</span>
@@ -470,33 +392,42 @@ export default function ModelsPage() {
               autoFocus
             />
             {errors.name && (
-              <small className="text-red-500 text-xs mt-1 block">
-                {errors.name}
-              </small>
+              <small className="text-red-500 text-xs mt-1 block">{errors.name}</small>
             )}
           </div>
-
-          {/* Logo Upload Section - OPTIONAL */}
+          <div>
+            <label className="font-bold text-sm text-gray-700 block mb-2">
+              Brand <span className="text-red-600">*</span>
+            </label>
+            <InputText
+              name="brand"
+              value={form.brand}
+              onChange={onInputChange}
+              placeholder="Enter brand name"
+              className={`w-full p-2 text-sm rounded-lg ${
+                errors.brand ? "border border-red-500" : ""
+              }`}
+            />
+            {errors.brand && (
+              <small className="text-red-500 text-xs mt-1 block">{errors.brand}</small>
+            )}
+          </div>
           <div>
             <label className="font-bold text-sm text-gray-700 block mb-2">
               Logo (Optional)
             </label>
-            
-            {/* Current/Preview Image */}
             {form.logoPreview && (
               <div className="mb-3">
                 <div className="text-xs text-gray-500 mb-1">Current Logo:</div>
                 <div className="w-20 h-20 border-2 border-gray-300 rounded-lg flex items-center justify-center bg-white">
-                  <img 
-                    src={form.logoPreview} 
-                    alt="Logo preview" 
+                  <img
+                    src={form.logoPreview}
+                    alt="Logo preview"
                     className="max-w-full max-h-full object-contain"
                   />
                 </div>
               </div>
             )}
-
-            {/* File Upload */}
             <FileUpload
               ref={fileUploadRef}
               mode="basic"
@@ -509,13 +440,10 @@ export default function ModelsPage() {
               auto={false}
               customUpload={true}
             />
-            
             <div className="text-xs text-gray-500 mt-1">
               Upload a logo image (optional). Max size: 5MB
             </div>
           </div>
-
-          {/* Active Checkbox */}
           <div className="flex items-center gap-2">
             <Checkbox
               inputId="activeModel"
@@ -523,17 +451,14 @@ export default function ModelsPage() {
               checked={form.active}
               onChange={onInputChange}
             />
-            <label htmlFor="activeModel" className="font-bold text-sm text-gray-700">
+            <label
+              htmlFor="activeModel"
+              className="font-bold text-sm text-gray-700"
+            >
               Active
             </label>
           </div>
-
-          {/* Progress Bar */}
-          {saving && (
-            <ProgressBar mode="indeterminate" className="h-2" />
-          )}
-
-          {/* Action Buttons */}
+          {saving && <ProgressBar mode="indeterminate" className="h-2" />}
           <div className="flex gap-3 mt-4 justify-end">
             <Button
               label="Cancel"
@@ -546,7 +471,7 @@ export default function ModelsPage() {
               icon="pi pi-check"
               className="bg-gradient-to-r from-fuchsia-700 to-purple-700 border-none font-bold px-4 py-2 text-sm rounded-lg"
               onClick={saveModel}
-              disabled={!form.name.trim() || saving}
+              disabled={!form.name.trim() || !form.brand.trim() || saving}
               loading={saving}
             />
           </div>

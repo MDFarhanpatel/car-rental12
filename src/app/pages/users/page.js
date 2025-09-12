@@ -324,7 +324,7 @@ export default function UsersPage() {
     Object.values(editErrors).some(error => error);
 
   return (
-    <div className="p-4 min-h-screen bg-gradient-to-r from-gray-950 via-gray-900 to-fuchsia-900 font-sans">
+    <div className="p-4 min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
       <Toast ref={toast} />
       <div className="mb-4">
         <BreadCrumb

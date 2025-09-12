@@ -96,7 +96,7 @@ export default function SettingsPage() {
   );
 
   return (
-    <div className={classNames('min-h-screen bg-gradient-to-r from-gray-950 via-gray-900 to-fuchsia-900 font-sans', { 'overflow-hidden': sidebarVisible })}>
+    <div className={classNames('min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans', { 'overflow-hidden': sidebarVisible })}>
       <Toast ref={toast} />
       <div className="p-7">
         {/* Breadcrumb */}
