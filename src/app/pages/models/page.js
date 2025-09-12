@@ -1,42 +1,31 @@
 "use client";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Toast } from "primereact/toast";
+import { Checkbox } from "primereact/checkbox";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { BreadCrumb } from "primereact/breadcrumb";
-
-// Brands with logo and models
-const famousBrands = [
-  { name: "Toyota", logo: "https://logos.therichpost.com/5/toyota.png", models: ["Corolla", "Camry", "Yaris", "Prius", "RAV4"] },
-  { name: "Honda", logo: "https://logos.therichpost.com/5/honda.png", models: ["Civic", "Accord", "CR-V", "Pilot", "Jazz"] },
-  { name: "Ford", logo: "https://logos.therichpost.com/5/ford.png", models: ["Focus", "Mustang", "Fiesta", "Explorer", "F-150"] },
-  { name: "BMW", logo: "https://logos.therichpost.com/5/bmw.png", models: ["3 Series", "5 Series", "X5", "X3", "M3"] },
-  { name: "Mercedes-Benz", logo: "https://logos.therichpost.com/5/mercedes-benz.png", models: ["C-Class", "E-Class", "S-Class", "GLE", "GLA"] },
-  { name: "Audi", logo: "https://logos.therichpost.com/5/audi.png", models: ["A3", "A4", "Q5", "Q7", "A6"] },
-  { name: "Volkswagen", logo: "https://logos.therichpost.com/5/volkswagen.png", models: ["Golf", "Jetta", "Passat", "Tiguan", "Polo"] },
-  { name: "Chevrolet", logo: "https://logos.therichpost.com/5/chevrolet.png", models: ["Cruze", "Malibu", "Impala", "Spark", "Tahoe"] },
-  { name: "Nissan", logo: "https://logos.therichpost.com/5/nissan.png", models: ["Altima", "Sentra", "Leaf", "Rogue", "X-Trail"] },
-  { name: "Hyundai", logo: "https://logos.therichpost.com/5/hyundai.png", models: ["Elantra", "Sonata", "Tucson", "Santa Fe", "i20"] },
-  // ... Add more brands/models here
-];
-
-// Flatten all models for all brands to be displayed in table initially
-const initialModels = [
-  { name: "innova crysta", brand: famousBrands[0] },
-  { name: "Honda city", brand: famousBrands[1] },
-  { name: "Ford Eco sport", brand: famousBrands[2] },
-];
+import { ProgressBar } from "primereact/progressbar";
 
 export default function ModelsPage() {
-  const [models, setModels] = useState(initialModels);
+  const [models, setModels] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
-  const [editingIndex, setEditingIndex] = useState(null);
-  const [form, setForm] = useState({ name: "", brand: null });
+  const [editing, setEditing] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [form, setForm] = useState({ 
+    name: "", 
+    brandId: null,
+    active: true 
+  });
   const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const toast = useRef(null);
 
   const breadcrumbItems = [
@@ -45,145 +34,501 @@ export default function ModelsPage() {
     { label: "Models" },
   ];
 
+  // Handle window object safely
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Get current user from JWT token
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setCurrentUser(payload);
+      } catch (error) {
+        console.error('Error decoding token:', error);
+      }
+    }
+  }, []);
+
+  // Check if user is admin
+  const isAdmin = () => {
+    return currentUser?.role_id === 'ADMIN' || currentUser?.role === 'ADMIN';
+  };
+
+  // Fetch data from APIs
+  useEffect(() => {
+    fetchBrands();
+    fetchModels();
+  }, []);
+
+  const fetchBrands = async () => {
+    try {
+      const response = await fetch("/api/v1/brands");
+      if (response.ok) {
+        const data = await response.json();
+        setBrands(data.brands.filter(brand => brand.active)); // Only active brands
+      }
+    } catch (error) {
+      console.error("Error fetching brands:", error);
+    }
+  };
+
+  const fetchModels = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/v1/models");
+      if (response.ok) {
+        const data = await response.json();
+        setModels(data.models);
+      }
+    } catch (error) {
+      console.error("Error fetching models:", error);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Failed to load models",
+        life: 3000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Templates for table columns
+  const brandBodyTemplate = (rowData) => (
+    <div className="flex items-center gap-2">
+      {rowData.brand?.logo && (
+        <img 
+          src={rowData.brand.logo} 
+          alt={rowData.brand.name} 
+          className="w-6 h-6 sm:w-8 sm:h-8 object-contain bg-white rounded p-1" 
+        />
+      )}
+      <span className="text-xs sm:text-sm">{rowData.brand?.name}</span>
+    </div>
+  );
+
+  const statusBodyTemplate = (rowData) => (
+    <span className={`px-2 py-1 rounded text-xs font-medium ${
+      rowData.active 
+        ? 'bg-green-600 text-black' 
+        : 'bg-red-600 text-black'
+    }`}>
+      {rowData.active ? "Active" : "Inactive"}
+    </span>
+  );
+
+  const variantCountTemplate = (rowData) => (
+    <span className="text-xs sm:text-sm text-gray-300">
+      {rowData._count?.variants || 0} variants
+    </span>
+  );
+
+  const actionBodyTemplate = (rowData) => (
+    <div className="flex gap-1 sm:gap-2 justify-center">
+      <Button 
+        icon="pi pi-pencil" 
+        rounded 
+        severity="secondary"
+        className="p-button-sm w-6 h-6 sm:w-8 sm:h-8" 
+        onClick={() => openEdit(rowData)} 
+        aria-label="Edit" 
+      />
+      {isAdmin() && (
+        <Button
+          icon="pi pi-trash"
+          rounded
+          severity="danger"
+          className="p-button-sm w-6 h-6 sm:w-8 sm:h-8"
+          onClick={() => deleteModel(rowData)}
+          aria-label="Delete"
+        />
+      )}
+    </div>
+  );
+
+  // Calculate stats
+  const activeCount = models.filter((m) => m.active).length;
+  const inactiveCount = models.length - activeCount;
+
+  // Dialog functions
   const openAdd = () => {
-    setForm({ name: "", brand: null });
+    setEditing(null);
+    setForm({ 
+      name: "", 
+      brandId: null,
+      active: true 
+    });
     setErrors({});
-    setEditingIndex(null);
     setShowDialog(true);
   };
 
-  const openEdit = (rowIndex) => {
-    setForm({ name: models[rowIndex].name, brand: models[rowIndex].brand });
+  const openEdit = (model) => {
+    setEditing(model);
+    setForm({ 
+      name: model.name,
+      brandId: model.brandId,
+      active: model.active 
+    });
     setErrors({});
-    setEditingIndex(rowIndex);
     setShowDialog(true);
   };
 
+  const onInputChange = (e) => {
+    const { name, value, checked, type } = e.target;
+    if (name === "active") {
+      setForm((f) => ({ ...f, active: checked }));
+    } else if (name === "name") {
+      setForm((f) => ({ ...f, name: value }));
+      setErrors((e) => ({ ...e, name: value.trim() ? "" : "Model name is required." }));
+    }
+  };
+
+  const onBrandChange = (e) => {
+    setForm(f => ({ ...f, brandId: e.value }));
+    setErrors(e => ({ ...e, brandId: "" }));
+  };
+
+  // Validation
   const validate = () => {
     const newErrors = {};
-    if (!form.name.trim()) newErrors.name = "Model Name is required.";
-    if (!form.brand) newErrors.brand = "Brand is required.";
+    if (!form.name.trim()) newErrors.name = "Model name is required.";
+    if (!form.brandId) newErrors.brandId = "Brand is required.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const saveModel = () => {
+  // Save model to API
+  const saveModel = async () => {
     if (!validate()) return;
-    if (editingIndex !== null) {
-      setModels(models.map((m, i) => i === editingIndex ? { ...form } : m));
-      toast.current.show({ severity: "success", summary: "Model Updated", detail: form.name, life: 1800 });
-    } else {
-      setModels([...models, { ...form }]);
-      toast.current.show({ severity: "success", summary: "Model Added", detail: form.name, life: 1800 });
+    setSaving(true);
+    
+    try {
+      const modelData = {
+        name: form.name.trim(),
+        brandId: form.brandId,
+        active: form.active
+      };
+
+      let response;
+      if (editing) {
+        response = await fetch(`/api/v1/models/${editing.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(modelData),
+        });
+      } else {
+        response = await fetch("/api/v1/models", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(modelData),
+        });
+      }
+
+      const data = await response.json();
+      if (response.ok) {
+        setShowDialog(false);
+        fetchModels();
+        toast.current?.show({
+          severity: "success",
+          summary: editing ? "Model Updated" : "Model Added",
+          detail: form.name,
+          life: 2000,
+        });
+      } else {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: data.message || `Failed to ${editing ? 'update' : 'add'} model`,
+          life: 3000,
+        });
+      }
+    } catch (error) {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: `Failed to ${editing ? 'update' : 'add'} model`,
+        life: 3000,
+      });
+    } finally {
+      setSaving(false);
     }
-    setShowDialog(false);
   };
 
-  // Only show models for selected brand
-  const brandModelOptions = form.brand ? form.brand.models.map(modelName => ({
-    name: modelName
-  })) : [];
+  // Delete model function (admin only)
+  const deleteModel = async (model) => {
+    if (!isAdmin()) {
+      toast.current?.show({
+        severity: "warn",
+        summary: "Access Denied",
+        detail: "Only administrators can delete models",
+        life: 3000,
+      });
+      return;
+    }
 
+    if (window.confirm(`Are you sure you want to delete ${model.name}?`)) {
+      try {
+        const response = await fetch(`/api/v1/models/${model.id}`, {
+          method: "DELETE",
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          fetchModels();
+          toast.current?.show({
+            severity: "success",
+            summary: "Model Deleted",
+            detail: `${model.name} was deleted successfully!`,
+            life: 2000,
+          });
+        } else {
+          toast.current?.show({
+            severity: "error",
+            summary: "Error",
+            detail: data.message || "Failed to delete model",
+            life: 3000,
+          });
+        }
+      } catch (error) {
+        toast.current?.show({
+          severity: "error",
+          summary: "Error",
+          detail: "Failed to delete model",
+          life: 3000,
+        });
+      }
+    }
+  };
+
+  // Brand dropdown templates
   const brandOptionTemplate = (option) => (
-    option ? (
-      <div className="flex items-center gap-2">
-        <img src={option.logo} alt={option.name} className="w-6 h-6 object-contain" />
-        <span>{option.name}</span>
-      </div>
-    ) : null
-  );
-
-  const brandValueTemplate = (option) => (
-    option ? (
-      <div className="flex items-center gap-2">
-        <img src={option.logo} alt={option.name} className="w-6 h-6 object-contain" />
-        <span>{option.name}</span>
-      </div>
-    ) : <span>Brand</span>
-  );
-
-  const dialogFooter = (
-    <div className="flex justify-end gap-3 w-full">
-      <Button
-        label="Save"
-        icon="pi pi-check"
-        className="bg-black border-none font-extrabold px-6 py-2 rounded-lg"
-        onClick={saveModel}
-      />
-      <Button
-        label="Cancel"
-        className="bg-black border-none font-extrabold px-6 py-2 rounded-lg"
-        onClick={() => setShowDialog(false)}
-      />
+    <div className="flex items-center gap-2 p-2">
+      {option.logo && (
+        <img src={option.logo} alt={option.name} className="w-6 h-6 object-contain bg-white rounded p-1" />
+      )}
+      <span>{option.name}</span>
     </div>
   );
 
+  const brandValueTemplate = (option) => {
+    if (!option) return <span className="text-gray-400">Select Brand</span>;
+    
+    return (
+      <div className="flex items-center gap-2">
+        {option.logo && (
+          <img src={option.logo} alt={option.name} className="w-6 h-6 object-contain bg-white rounded p-1" />
+        )}
+        <span>{option.name}</span>
+      </div>
+    );
+  };
+
+  const selectedBrand = brands.find(b => b.id === form.brandId);
+
   return (
-    <div className="p-4 min-h-screen bg-gradient-to-r from-gray-950 via-gray-900 to-fuchsia-900 font-sans">
+    <div className="min-h-screen bg-gradient-to-r from-gray-950 via-gray-900 to-fuchsia-900 font-sans">
       <Toast ref={toast} />
-      <div className="mb-4">
-        <BreadCrumb model={breadcrumbItems}
+      
+      <div className="p-2 sm:p-4 lg:p-6">
+        
+        {/* Breadcrumb */}
+        <div className="hidden sm:block mb-4">
+          <BreadCrumb 
+            model={breadcrumbItems}
             home={{ icon: "pi pi-home", command: () => window.location.href = "/" }}
-            className="text-white font-bold"
-        />
-      </div>
+            className="text-white font-bold text-sm"
+          />
+        </div>
 
-      <div className="text-3xl font-extrabold text-white mb-3">Models</div>
-      <div className="flex flex-wrap gap-4 mb-6 items-center">
-        <span className="font-extrabold text-white flex items-center"><i className="pi pi-check mr-1" />10 Active</span>
-        <span className="font-extrabold text-rose-400 flex items-center"><i className="pi pi-times mr-1" />12 Inactive</span>
-        <span className="font-extrabold text-white flex items-center"><i className="pi pi-list mr-1" />22 Total Models</span>
-        <Button label="Add Model" icon="pi pi-plus" className="ml-auto bg-black border-none font-bold" onClick={openAdd} />
-      </div>
-      <div className="bg-zinc-900 p-6 rounded-2xl shadow-2xl overflow-x-auto">
-        <DataTable value={models} stripedRows paginator rows={5} className="p-datatable-sm text-white" emptyMessage="No models found.">
-          <Column field="name" header="Model Name" />
-          <Column body={rowData => (
-            <span className="flex items-center gap-2">
-              {rowData.brand && <img src={rowData.brand.logo} alt={rowData.brand.name} className="w-6 h-6 object-contain" />}
-              {rowData.brand?.name}
+        {/* Header */}
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white mb-2">
+            Car Models
+          </h1>
+          {currentUser && (
+            <span className="text-xs sm:text-sm text-gray-300">
+              (Logged in as: {currentUser.role_id || currentUser.role || 'User'})
             </span>
-          )} header="Brand" />
-          <Column body={(_, { rowIndex }) => (
-            <Button icon="pi pi-pencil" rounded className="p-button-sm" onClick={() => openEdit(rowIndex)} aria-label="Edit" />
-          )} header="Actions" />
-        </DataTable>
+          )}
+        </div>
+
+        {/* Stats and Add Button */}
+        <div className="flex flex-wrap gap-2 sm:gap-4 mb-4 sm:mb-6 items-center text-xs sm:text-sm">
+          <span className="font-bold text-white flex items-center">
+            <i className="pi pi-check mr-1" />
+            {activeCount} Active
+          </span>
+          <span className="font-bold text-rose-400 flex items-center">
+            <i className="pi pi-times mr-1" />
+            {inactiveCount} Inactive
+          </span>
+          <span className="font-bold text-white flex items-center">
+            <i className="pi pi-list mr-1" />
+            {models.length} Total
+          </span>
+          <Button 
+            label="Add Model" 
+            icon="pi pi-plus" 
+            className="ml-auto bg-gradient-to-r from-fuchsia-700 to-purple-600 border-none font-bold px-3 py-1 sm:px-6 sm:py-2 text-xs sm:text-sm lg:text-base rounded-lg hover:scale-105 transition-transform" 
+            onClick={openAdd} 
+          />
+        </div>
+
+        {/* Data Table */}
+        <div className="bg-zinc-900 p-2 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl shadow-2xl overflow-x-auto">
+          <DataTable
+            value={models}
+            stripedRows
+            paginator
+            rows={10}
+            loading={loading}
+            className="p-datatable-sm text-white text-xs sm:text-sm"
+            emptyMessage="No models found."
+            responsiveLayout="scroll"
+          >
+            <Column 
+              field="name" 
+              header="Model Name" 
+              className="text-xs sm:text-sm font-medium"
+            />
+            <Column 
+              header="Brand" 
+              body={brandBodyTemplate} 
+              className="w-32 sm:w-40"
+            />
+            <Column
+              header="Status"
+              body={statusBodyTemplate}
+              className="w-20 sm:w-24"
+            />
+            <Column 
+              header="Variants" 
+              body={variantCountTemplate} 
+              className="w-20 sm:w-24"
+            />
+            <Column 
+              header="Actions" 
+              body={actionBodyTemplate} 
+              className="w-28 sm:w-32"
+            />
+          </DataTable>
+        </div>
       </div>
 
+      {/* Dialog */}
       <Dialog
-        header={<span className="text-xl font-extrabold text-fuchsia-700">{editingIndex === null ? "Add Model" : "Edit Model"}</span>}
+        header={
+          <span className="text-lg sm:text-xl font-bold text-fuchsia-700">
+            {editing ? "Edit Model" : "Add New Model"}
+          </span>
+        }
         visible={showDialog}
         position="right"
         modal
         blockScroll
         className="rounded-lg shadow-xl"
-        style={{ width: 380, maxWidth: "100vw" }}
+        style={{ 
+          width: isMobile ? "95vw" : "400px", 
+          maxWidth: "100vw",
+          margin: isMobile ? "10px" : "0"
+        }}
         onHide={() => setShowDialog(false)}
-        footer={dialogFooter}
       >
-        <form className="flex flex-col gap-3 p-1">
-          <InputText
-            value={form.name}
-            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-            placeholder="Model Name"
-            className={`w-full p-2 rounded-lg mt-3 ${errors.name ? "border border-red-500" : ""}`}
-            autoFocus
-            disabled={form.brand && form.brand.models.includes(form.name)}
-          />
-          {errors.name && <small className="text-red-500">{errors.name}</small>}
+        <div className="flex flex-col gap-4 p-2 sm:p-4">
+          
+          {/* Model Name Input */}
+          <div>
+            <label className="font-bold text-sm text-gray-700 block mb-2">
+              Model Name <span className="text-red-600">*</span>
+            </label>
+            <InputText
+              name="name"
+              value={form.name}
+              onChange={onInputChange}
+              placeholder="Enter model name"
+              className={`w-full p-2 text-sm rounded-lg ${
+                errors.name ? "border border-red-500" : ""
+              }`}
+              autoFocus
+            />
+            {errors.name && (
+              <small className="text-red-500 text-xs mt-1 block">
+                {errors.name}
+              </small>
+            )}
+          </div>
 
-          <Dropdown
-            value={form.brand}
-            options={famousBrands}
-            onChange={e => setForm(f => ({ ...f, brand: e.value, name: "" }))}
-            optionLabel="name"
-            itemTemplate={brandOptionTemplate}
-            valueTemplate={brandValueTemplate}
-            placeholder="Brand"
-            className={`w-full p-2 rounded-lg ${errors.brand ? "border border-red-500" : ""}`}
-          />
-          {errors.brand && <small className="text-red-500">{errors.brand}</small>}
-        </form>
+          {/* Brand Dropdown */}
+          <div>
+            <label className="font-bold text-sm text-gray-700 block mb-2">
+              Brand <span className="text-red-600">*</span>
+            </label>
+            <Dropdown
+              value={selectedBrand}
+              options={brands}
+              onChange={onBrandChange}
+              optionLabel="name"
+              optionValue="id"
+              itemTemplate={brandOptionTemplate}
+              valueTemplate={brandValueTemplate}
+              placeholder="Select Brand"
+              className={`w-full ${errors.brandId ? "border border-red-500" : ""}`}
+              showClear
+            />
+            {errors.brandId && (
+              <small className="text-red-500 text-xs mt-1 block">
+                {errors.brandId}
+              </small>
+            )}
+          </div>
+
+          {/* Active Checkbox */}
+          <div className="flex items-center gap-2">
+            <Checkbox
+              inputId="activeModel"
+              name="active"
+              checked={form.active}
+              onChange={onInputChange}
+            />
+            <label htmlFor="activeModel" className="font-bold text-sm text-gray-700">
+              Active
+            </label>
+          </div>
+
+          {/* Progress Bar */}
+          {saving && (
+            <ProgressBar mode="indeterminate" className="h-2" />
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 mt-4 justify-end">
+            <Button
+              label="Cancel"
+              className="bg-gray-400 border-none font-bold px-4 py-2 text-sm rounded-lg"
+              onClick={() => setShowDialog(false)}
+              disabled={saving}
+            />
+            <Button
+              label={editing ? "Update Model" : "Add Model"}
+              icon="pi pi-check"
+              className="bg-gradient-to-r from-fuchsia-700 to-purple-700 border-none font-bold px-4 py-2 text-sm rounded-lg"
+              onClick={saveModel}
+              disabled={!form.name.trim() || !form.brandId || saving}
+              loading={saving}
+            />
+          </div>
+        </div>
       </Dialog>
     </div>
   );
