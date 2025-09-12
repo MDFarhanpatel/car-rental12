@@ -26,6 +26,7 @@ export default function BrandsPage() {
   });
   const [errors, setErrors] = useState({});
   const [uploading, setUploading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false); // ✅ Added state for mobile detection
   const toast = useRef(null);
   const fileUploadRef = useRef(null);
 
@@ -34,6 +35,18 @@ export default function BrandsPage() {
     { label: "Admin", command: () => window.location.href = "/admin" },
     { label: "Brands" },
   ];
+
+  // ✅ Handle window object safely
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    
+    handleResize(); // Set initial value
+    window.addEventListener('resize', handleResize);
+    
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Get current user from JWT token
   useEffect(() => {
@@ -103,30 +116,26 @@ export default function BrandsPage() {
     </div>
   );
 
-  // Keep admin check only for edit/delete buttons
+  // ✅ Fixed: Removed admin-only text, only show delete button for admins
   const actionBodyTemplate = (rowData) => (
     <div className="flex gap-1 sm:gap-2 justify-center">
-      {isAdmin() ? (
-        <>
-          <Button 
-            icon="pi pi-pencil" 
-            rounded 
-            severity="secondary"
-            className="p-button-sm w-6 h-6 sm:w-8 sm:h-8" 
-            onClick={() => openEdit(rowData)} 
-            aria-label="Edit" 
-          />
-          <Button
-            icon="pi pi-trash"
-            rounded
-            severity="danger"
-            className="p-button-sm w-6 h-6 sm:w-8 sm:h-8"
-            onClick={() => deleteBrand(rowData)}
-            aria-label="Delete"
-          />
-        </>
-      ) : (
-        <span className="text-gray-400 text-xs sm:text-sm">Admin only</span>
+      <Button 
+        icon="pi pi-pencil" 
+        rounded 
+        severity="secondary"
+        className="p-button-sm w-6 h-6 sm:w-8 sm:h-8" 
+        onClick={() => openEdit(rowData)} 
+        aria-label="Edit" 
+      />
+      {isAdmin() && (
+        <Button
+          icon="pi pi-trash"
+          rounded
+          severity="danger"
+          className="p-button-sm w-6 h-6 sm:w-8 sm:h-8"
+          onClick={() => deleteBrand(rowData)}
+          aria-label="Delete"
+        />
       )}
     </div>
   );
@@ -148,15 +157,6 @@ export default function BrandsPage() {
   };
 
   const openEdit = (brandEntry) => {
-    if (!isAdmin()) {
-      toast.current?.show({
-        severity: "warn",
-        summary: "Access Denied",
-        detail: "Only administrators can edit brands",
-        life: 3000,
-      });
-      return;
-    }
     setEditing(brandEntry);
     setForm({ 
       name: brandEntry.brand.name,
@@ -192,7 +192,6 @@ export default function BrandsPage() {
         });
         return;
       }
-
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast.current?.show({
@@ -203,7 +202,6 @@ export default function BrandsPage() {
         });
         return;
       }
-
       setForm(prev => ({ ...prev, logoFile: file }));
       
       // Create preview URL
@@ -212,17 +210,12 @@ export default function BrandsPage() {
         setForm(prev => ({ ...prev, logoPreview: e.target.result }));
       };
       reader.readAsDataURL(file);
-      
-      setErrors(prev => ({ ...prev, logo: "" }));
     }
   };
 
   const validate = () => {
     const newErrors = {};
     if (!form.name.trim()) newErrors.name = "Brand name is required.";
-    if (!editing && !form.logoFile && !form.logoPreview) {
-      newErrors.logo = "Brand logo is required.";
-    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -240,19 +233,16 @@ export default function BrandsPage() {
   // Save brand to API
   const saveBrand = async () => {
     if (!validate()) return;
-
     setUploading(true);
     try {
       let logoUrl = form.logoPreview;
-
       // If new file is selected, convert to base64
       if (form.logoFile) {
         logoUrl = await fileToBase64(form.logoFile);
       }
-
       const brandData = {
         name: form.name.trim(),
-        logo: logoUrl,
+        logo: logoUrl || null,
         active: form.active
       };
 
@@ -272,7 +262,6 @@ export default function BrandsPage() {
       }
 
       const data = await response.json();
-
       if (response.ok) {
         setShowDialog(false);
         fetchBrands();
@@ -302,7 +291,7 @@ export default function BrandsPage() {
     }
   };
 
-  // Delete brand function
+  // Delete brand function (admin only)
   const deleteBrand = async (brandEntry) => {
     if (!isAdmin()) {
       toast.current?.show({
@@ -313,13 +302,11 @@ export default function BrandsPage() {
       });
       return;
     }
-
     if (window.confirm(`Are you sure you want to delete ${brandEntry.brand.name}?`)) {
       try {
         const response = await fetch(`/api/v1/brands/${brandEntry.id}`, {
           method: "DELETE",
         });
-
         if (response.ok) {
           fetchBrands();
           toast.current?.show({
@@ -417,7 +404,11 @@ export default function BrandsPage() {
             <Column
               header="Status"
               body={(r) => (
-                <span className={`px-2 py-1 rounded text-xs ${r.active ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                  r.active 
+                    ? 'bg-green-600 text-black' 
+                    : 'bg-red-600 text-black'
+                }`}>
                   {r.active ? "Active" : "Inactive"}
                 </span>
               )}
@@ -426,13 +417,13 @@ export default function BrandsPage() {
             <Column 
               header="Actions" 
               body={actionBodyTemplate} 
-              className="w-20 sm:w-28"
+              className="w-28 sm:w-32"
             />
           </DataTable>
         </div>
       </div>
 
-      {/* Mobile-responsive Dialog */}
+      {/* ✅ Fixed: Safe mobile-responsive Dialog */}
       <Dialog
         header={
           <span className="text-lg sm:text-xl font-bold text-fuchsia-700">
@@ -445,9 +436,9 @@ export default function BrandsPage() {
         blockScroll
         className="rounded-lg shadow-xl"
         style={{ 
-          width: window.innerWidth < 640 ? "95vw" : "400px", 
+          width: isMobile ? "95vw" : "400px", 
           maxWidth: "100vw",
-          margin: window.innerWidth < 640 ? "10px" : "0"
+          margin: isMobile ? "10px" : "0"
         }}
         onHide={() => setShowDialog(false)}
       >
@@ -474,10 +465,10 @@ export default function BrandsPage() {
             )}
           </div>
 
-          {/* Logo Upload Section */}
+          {/* Logo Upload Section - OPTIONAL */}
           <div>
             <label className="font-bold text-sm text-gray-700 block mb-2">
-              Logo URL {!editing && <span className="text-red-600">*</span>}
+              Logo (Optional)
             </label>
             
             {/* Current/Preview Image */}
@@ -509,14 +500,8 @@ export default function BrandsPage() {
             />
             
             <div className="text-xs text-gray-500 mt-1">
-              Leave empty to use default placeholder
+              Upload a logo image (optional). Max size: 5MB
             </div>
-            
-            {errors.logo && (
-              <small className="text-red-500 text-xs mt-1 block">
-                {errors.logo}
-              </small>
-            )}
           </div>
 
           {/* Active Checkbox */}

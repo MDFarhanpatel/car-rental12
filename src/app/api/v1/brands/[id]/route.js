@@ -14,8 +14,8 @@ export async function GET(request, { params }) {
         id: true,
         name: true,
         logo: true,
-        description: true,
-        is_active: true,
+        active: true,        // ✅ Correct field name
+        models: true,        // ✅ Available in your schema
         createdAt: true,
         updatedAt: true,
       }
@@ -48,7 +48,9 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
   try {
     const { id } = await params;
-    const { name, logo, description, is_active } = await request.json();
+    const { name, logo, active } = await request.json();
+
+    console.log('Request body:', { name, logo, active });
 
     // Check if brand exists
     const existingBrand = await prisma.brand.findUnique({
@@ -81,16 +83,18 @@ export async function PUT(request, { params }) {
       data: {
         ...(name && { name }),
         ...(logo !== undefined && { logo }),
-        ...(description !== undefined && { description }),
-        ...(is_active !== undefined && { is_active }),
+        ...(active !== undefined && { active }),
         updatedAt: new Date(),
       },
       select: {
         id: true,
         name: true,
         logo: true,
-        description: true,
-        is_active: true,
+        active: true,      // ✅ Matches your schema exactly
+        createdAt: true,
+        updatedAt: true,
+        // ❌ Removed: description (doesn't exist in your Brand model)
+        // ❌ Removed: is_active (your field is named 'active')
       }
     });
 
@@ -124,6 +128,18 @@ export async function DELETE(request, { params }) {
       return NextResponse.json(
         { message: "Brand not found", statusCode: 404 },
         { status: 404 }
+      );
+    }
+
+    // Check if brand has models before deleting (referential integrity)
+    const modelsCount = await prisma.model.count({
+      where: { brandId: id }
+    });
+
+    if (modelsCount > 0) {
+      return NextResponse.json(
+        { message: "Cannot delete brand with existing models", statusCode: 400 },
+        { status: 400 }
       );
     }
 

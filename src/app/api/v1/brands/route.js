@@ -11,9 +11,12 @@ export async function GET() {
         id: true,
         name: true,
         logo: true,
-        active: true,
+        active: true,      // ✅ Correct field name from your schema
         createdAt: true,
         updatedAt: true,
+        _count: {
+          select: { models: true }  // ✅ Count related models
+        }
       },
       orderBy: { name: 'asc' }
     });
@@ -39,7 +42,7 @@ export async function GET() {
 export async function POST(request) {
   try {
     const body = await request.json();
-    console.log('Request body:', body); // Debug log
+    console.log('Request body:', body);
 
     const { name, logo, active } = body;
 
@@ -78,7 +81,7 @@ export async function POST(request) {
         id: brand.id,
         name: brand.name,
         logo: brand.logo,
-        active: brand.active,
+        active: brand.active,    // ✅ Correct field name
       },
       statusCode: 201
     }, { status: 201 });
@@ -86,7 +89,6 @@ export async function POST(request) {
   } catch (error) {
     console.error('Error creating brand:', error);
     
-    // Handle Prisma specific errors
     if (error.code === 'P2002') {
       return NextResponse.json(
         { message: "Brand name already exists", statusCode: 409 },
