@@ -109,13 +109,15 @@ export default function ModelsPage() {
   );
 
   const statusBodyTemplate = (rowData) => (
-    <span className={`px-2 py-1 rounded text-xs font-medium ${
-      rowData.active 
-        ? 'bg-green-600 text-black' 
-        : 'bg-red-600 text-black'
-    }`}>
-      {rowData.active ? "Active" : "Inactive"}
-    </span>
+    <div className="flex justify-center">
+      <span className={`px-2 py-1 rounded text-xs font-medium ${
+        rowData.active 
+          ? 'bg-green-600 text-black' 
+          : 'bg-red-600 text-black'
+      }`}>
+        {rowData.active ? "Active" : "Inactive"}
+      </span>
+    </div>
   );
 
   const actionBodyTemplate = (rowData) => (
@@ -393,7 +395,7 @@ export default function ModelsPage() {
           />
         </div>
 
-        {/* Data Table - Mobile responsive */}
+        {/* Data Table - Mobile responsive with Equal Column Spacing */}
         <div className="bg-zinc-900 p-2 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl shadow-2xl overflow-x-auto">
           <DataTable
             value={models}
@@ -404,26 +406,28 @@ export default function ModelsPage() {
             className="p-datatable-sm text-white text-xs sm:text-sm"
             emptyMessage="No models found."
             responsiveLayout="scroll"
+            tableStyle={{ tableLayout: 'fixed', width: '100%' }}
           >
             <Column 
               field="name" 
               header="Model Name" 
               className="text-xs sm:text-sm font-medium"
+              style={{ width: '25%' }}
             />
             <Column 
               header="Logo" 
               body={logoBodyTemplate} 
-              className="w-16 sm:w-20" 
+              style={{ width: '25%' }}
             />
             <Column
               header="Status"
               body={statusBodyTemplate}
-              className="w-20 sm:w-24"
+              style={{ width: '25%' }}
             />
             <Column 
               header="Actions" 
               body={actionBodyTemplate} 
-              className="w-28 sm:w-32"
+              style={{ width: '25%' }}
             />
           </DataTable>
         </div>
