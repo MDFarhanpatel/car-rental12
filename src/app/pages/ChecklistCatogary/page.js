@@ -36,6 +36,34 @@ export default function ChecklistCategoriesPage() {
     fetchCategories();
   }, []);
 
+  // Create a new function for fetching categories without setting loading state
+  const fetchCategoriesWithoutLoading = async () => {
+    try {
+      const response = await fetch('/api/v1/checklistcategories');
+      const data = await response.json();
+      
+      if (data.success) {
+        setCategories(data.data || []);
+      } else {
+        console.error('Failed to fetch categories:', data.error);
+        toast.current?.show({
+          severity: 'error',
+          summary: 'Error',
+          detail: data.error || 'Failed to fetch categories',
+          life: 3000
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to fetch categories',
+        life: 3000
+      });
+    }
+  };
+
   const fetchCategories = async () => {
     try {
       setLoading(true);
@@ -108,7 +136,8 @@ export default function ChecklistCategoriesPage() {
       const data = await response.json();
       
       if (data.success) {
-        await fetchCategories(); // Refresh the list
+        // Use the new function instead of fetchCategories
+        await fetchCategoriesWithoutLoading();
         setShowAddDialog(false);
         
         // Show success toast
@@ -157,7 +186,8 @@ export default function ChecklistCategoriesPage() {
       const data = await response.json();
       
       if (data.success) {
-        await fetchCategories(); // Refresh the list
+        // Use the new function instead of fetchCategories
+        await fetchCategoriesWithoutLoading();
         setShowEditDialog(false);
         
         // Show success toast
