@@ -141,22 +141,22 @@ export default function DashboardHome() {
         </h2>
         
         <div className="bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-2xl p-4 sm:p-6">
-          <div className="space-y-3">
+          <div className="space-y-3 ">
             {[
               { action: "New booking", user: "John Doe", time: "10 minutes ago", icon: "pi pi-calendar-plus text-green-500" },
               { action: "Car returned", user: "Sarah Smith", time: "2 hours ago", icon: "pi pi-check-circle text-blue-500" },
               { action: "Payment received", user: "Mike Johnson", time: "Yesterday", icon: "pi pi-dollar text-yellow-500" }
             ].map((activity, index) => (
-              <div key={index} className="flex items-center gap-3 p-2 sm:p-3 bg-black bg-opacity-20 rounded-lg">
-                <div className="bg-white p-2 rounded-full">
-                  <i className={activity.icon} />
+              <div key={index} className="flex items-center gap-3 p-2 sm:p-3 bg-white bg-opacity-20 rounded-lg">
+                <div className="bg-blackp-2 rounded-full">
+                  <i className={`${activity.icon} text-lg`} />
                 </div>
                 <div className="flex-1">
                   <div className="flex flex-col sm:flex-row sm:justify-between">
                     <span className="font-medium text-black">{activity.action}</span>
-                    <span className="text-xs text-black-300">{activity.time}</span>
+                    <span className="text-xs text-black">{activity.time}</span>
                   </div>
-                  <span className="text-sm text-black-300">{activity.user}</span>
+                  <span className="text-sm text-black">{activity.user}</span>
                 </div>
               </div>
             ))}
