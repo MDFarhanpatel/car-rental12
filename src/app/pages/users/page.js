@@ -11,7 +11,6 @@ import { Tag } from "primereact/tag";
 import { Chip } from "primereact/chip";
 import { BreadCrumb } from "primereact/breadcrumb";
 
-// Updated roles to match your Prisma schema
 const roles = [
   { label: "User", value: "USER" },
   { label: "Admin", value: "ADMIN" },
@@ -29,6 +28,8 @@ export default function UsersPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
+  const toast = useRef(null);
+
   const [addForm, setAddForm] = useState({
     username: "",
     email: "",
@@ -36,78 +37,47 @@ export default function UsersPage() {
     password: "",
     role: "",
   });
-  const [editForm, setEditForm] = useState({ 
-    username: "", 
-    email: "", 
-    name: "", 
-    role: "" 
-  });
-  const [addErrors, setAddErrors] = useState({ 
-    username: "", 
-    email: "", 
-    name: "", 
-    password: "",
-    role: "" 
-  });
-  const [editErrors, setEditErrors] = useState({
+  const [editForm, setEditForm] = useState({
     username: "",
     email: "",
     name: "",
     role: "",
   });
-  const toast = useRef(null);
+  const [addErrors, setAddErrors] = useState({});
+  const [editErrors, setEditErrors] = useState({});
 
-  const items = [
-    { label: "Home", command: () => (window.location.href = "/pages/home") },
-    { label: "Admin", command: () => (window.location.href = "/admin/users") },
-    { label: "Users" },
-  ];
-
-  // Detect screen size for responsive design
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    // Set initial value
-    handleResize();
-    
-    // Add event listener
-    window.addEventListener('resize', handleResize);
-    
-    // Clean up
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
-
-  // Fetch users from API
   useEffect(() => {
     fetchUsers();
   }, []);
 
-  const fetchUsers = async () => {
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  async function fetchUsers() {
     try {
       setLoading(true);
-      const response = await fetch("/api/v1/users");
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.users || []);
-      }
-    } catch (error) {
-      console.error("Error fetching users:", error);
+      const res = await fetch("/api/v1/users");
+      if (!res.ok) throw new Error("Failed to load users");
+      const data = await res.json();
+      setUsers(data.users || []);
+    } catch (err) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: "Failed to load users",
+        detail: err.message || "Failed to load users",
         life: 3000,
       });
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  // Role & Status badges
   const roleTemplate = (row) => (
     <Chip
       label={row.role_id}
@@ -131,10 +101,8 @@ export default function UsersPage() {
         severity="secondary"
         className="p-button-sm"
         onClick={() => openEdit(row)}
-        style={{
-          background: "linear-gradient(to right, #7F1DFF 40%, #CA25A7 100%)",
-        }}
         aria-label="Edit"
+        style={{ background: "linear-gradient(to right, #7F1DFF 40%, #CA25A7 100%)" }}
       />
       <Button
         icon="pi pi-trash"
@@ -147,27 +115,30 @@ export default function UsersPage() {
     </div>
   );
 
-  // Add user handlers
-  const openAdd = () => {
-    setAddForm({ username: "", email: "", name: "", password: "", role: "" });
-    setAddErrors({ username: "", email: "", name: "", password: "", role: "" });
-    setShowAdd(true);
-  };
-
   const validateField = (field, value) =>
     !value || value.trim() === ""
       ? `${field.charAt(0).toUpperCase() + field.slice(1)} is required.`
       : "";
 
-  const handleAddChange = (e) => {
-    const { name, value } = e.target
-      ? e.target
-      : { name: "role", value: e.value };
+  function handleAddChange(e) {
+    const { name, value } = e.target ? e.target : { name: "role", value: e.value };
     setAddForm((prev) => ({ ...prev, [name]: value }));
     setAddErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+  }
+
+  function handleEditChange(e) {
+    const { name, value } = e.target ? e.target : { name: "role", value: e.value };
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+    setEditErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+  }
+
+  const openAdd = () => {
+    setAddForm({ username: "", email: "", name: "", password: "", role: "" });
+    setAddErrors({});
+    setShowAdd(true);
   };
 
-  const saveAdd = async () => {
+  async function saveAdd() {
     const errors = {
       username: validateField("username", addForm.username),
       email: validateField("email", addForm.email),
@@ -176,27 +147,18 @@ export default function UsersPage() {
       role: validateField("role", addForm.role),
     };
     setAddErrors(errors);
-    
-    if (Object.values(errors).some(error => error)) return;
+    if (Object.values(errors).some((e) => e)) return;
 
     try {
-      const response = await fetch("/api/v1/users", {
+      const res = await fetch("/api/v1/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: addForm.username,
-          email: addForm.email,
-          name: addForm.name,
-          password: addForm.password,
-          role: addForm.role,
-        }),
+        body: JSON.stringify(addForm),
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
+      const data = await res.json();
+      if (res.ok) {
         setShowAdd(false);
-        fetchUsers(); // Refresh the users list
+        fetchUsers();
         toast.current?.show({
           severity: "success",
           summary: "User Added",
@@ -211,7 +173,7 @@ export default function UsersPage() {
           life: 3000,
         });
       }
-    } catch (error) {
+    } catch {
       toast.current?.show({
         severity: "error",
         summary: "Error",
@@ -219,30 +181,21 @@ export default function UsersPage() {
         life: 3000,
       });
     }
-  };
+  }
 
-  // Edit user handlers
   const openEdit = (row) => {
     setSelectedUser(row);
-    setEditForm({ 
+    setEditForm({
       username: row.username,
       email: row.email || "",
-      name: row.name, 
-      role: row.role_id 
+      name: row.name,
+      role: row.role_id,
     });
-    setEditErrors({ username: "", email: "", name: "", role: "" });
+    setEditErrors({});
     setShowEdit(true);
   };
 
-  const handleEditChange = (e) => {
-    const { name, value } = e.target
-      ? e.target
-      : { name: "role", value: e.value };
-    setEditForm((prev) => ({ ...prev, [name]: value }));
-    setEditErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
-  };
-
-  const saveEdit = async () => {
+  async function saveEdit() {
     const errors = {
       username: validateField("username", editForm.username),
       email: validateField("email", editForm.email),
@@ -250,11 +203,10 @@ export default function UsersPage() {
       role: validateField("role", editForm.role),
     };
     setEditErrors(errors);
-    
-    if (Object.values(errors).some(error => error)) return;
+    if (Object.values(errors).some((e) => e)) return;
 
     try {
-      const response = await fetch(`/api/v1/users/${selectedUser.id}`, {
+      const res = await fetch(`/api/v1/users/${selectedUser.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -264,12 +216,10 @@ export default function UsersPage() {
           role_id: editForm.role,
         }),
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
+      const data = await res.json();
+      if (res.ok) {
         setShowEdit(false);
-        fetchUsers(); // Refresh the users list
+        fetchUsers();
         toast.current?.show({
           severity: "success",
           summary: "User Updated",
@@ -284,7 +234,7 @@ export default function UsersPage() {
           life: 3000,
         });
       }
-    } catch (error) {
+    } catch {
       toast.current?.show({
         severity: "error",
         summary: "Error",
@@ -292,40 +242,37 @@ export default function UsersPage() {
         life: 3000,
       });
     }
-  };
+  }
 
-  // Delete user
-  const deleteUser = async (user) => {
-    if (window.confirm(`Are you sure you want to delete ${user.name}?`)) {
-      try {
-        const response = await fetch(`/api/v1/users/${user.id}`, {
-          method: "DELETE",
-        });
-
-        if (response.ok) {
-          fetchUsers(); // Refresh the users list
-          toast.current?.show({
-            severity: "success",
-            summary: "User Deleted",
-            detail: `${user.name} was deleted successfully!`,
-            life: 2100,
-          });
-        } else {
-          throw new Error("Failed to delete user");
-        }
-      } catch (error) {
+  async function deleteUser(user) {
+    if (!window.confirm(`Are you sure you want to delete ${user.name}?`)) return;
+    try {
+      const res = await fetch(`/api/v1/users/${user.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        fetchUsers();
         toast.current?.show({
-          severity: "error",
-          summary: "Error",
-          detail: "Failed to delete user",
-          life: 3000,
+          severity: "success",
+          summary: "User Deleted",
+          detail: `${user.name} was deleted successfully!`,
+          life: 2100,
         });
+      } else {
+        throw new Error("Failed to delete user");
       }
+    } catch {
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: "Failed to delete user",
+        life: 3000,
+      });
     }
-  };
+  }
 
   const activeCount = users.filter((u) => u.is_active).length;
-  const inactiveCount = users.filter((u) => !u.is_active).length;
+  const inactiveCount = users.length - activeCount;
 
   const addSaveDisabled =
     !addForm.username.trim() ||
@@ -333,25 +280,26 @@ export default function UsersPage() {
     !addForm.name.trim() ||
     !addForm.password.trim() ||
     !addForm.role ||
-    Object.values(addErrors).some(error => error);
+    Object.values(addErrors).some((error) => error);
 
   const editSaveDisabled =
     !editForm.username.trim() ||
     !editForm.email.trim() ||
     !editForm.name.trim() ||
     !editForm.role ||
-    Object.values(editErrors).some(error => error);
+    Object.values(editErrors).some((error) => error);
 
   return (
     <div className="p-2 sm:p-4 min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
       <Toast ref={toast} />
       <div className="mb-2 sm:mb-4">
         <BreadCrumb
-          model={items}
-          home={{
-            icon: "pi pi-home",
-            command: () => (window.location.href = "/"),
-          }}
+          model={[
+            { label: "Home", command: () => (window.location.href = "/pages/home") },
+            { label: "Admin", command: () => (window.location.href = "/admin/users") },
+            { label: "Users" },
+          ]}
+          home={{ icon: "pi pi-home", command: () => (window.location.href = "/") }}
           className="text-white font-bold mb-2"
         />
       </div>
@@ -388,45 +336,21 @@ export default function UsersPage() {
           className="p-datatable-sm text-white"
           emptyMessage="No users found."
         >
-          <Column
-            field="name"
-            header={<span className="font-bold text-sm sm:text-base">Name</span>}
-          />
-          <Column
-            field="username"
-            header={<span className="font-bold text-sm sm:text-base">Username</span>}
-          />
-          <Column
-            field="email"
-            header={<span className="font-bold text-sm sm:text-base">Email</span>}
-          />
-          <Column
-            field="role_id"
-            header={<span className="font-bold text-sm sm:text-base">Role</span>}
-            body={roleTemplate}
-          />
-          <Column
-            field="is_active"
-            header={<span className="font-bold text-sm sm:text-base">Status</span>}
-            body={statusTemplate}
-          />
-          <Column
-            header={<span className="font-bold text-sm sm:text-base">Actions</span>}
-            body={actionBody}
-          />
+          <Column field="name" header="Name" />
+          <Column field="username" header="Username" />
+          <Column field="email" header="Email" />
+          <Column field="role_id" header="Role" body={roleTemplate} />
+          <Column field="is_active" header="Status" body={statusTemplate} />
+          <Column header="Actions" body={actionBody} />
         </DataTable>
       </div>
 
       {/* Add User Dialog */}
       <Dialog
-        header={
-          <span className="text-lg sm:text-xl font-extrabold text-fuchsia-700">
-            Add User
-          </span>
-        }
+        header="Add User"
         visible={showAdd}
         position="right"
-        style={{ width: "400px", maxWidth: "100vw" }}
+        style={{ width: 400, maxWidth: "100vw" }}
         modal
         blockScroll
         className="rounded-lg shadow-xl"
@@ -439,17 +363,11 @@ export default function UsersPage() {
           <InputText
             name="username"
             value={addForm.username}
-            className={`w-full p-2 text-sm sm:text-base rounded-lg ${
-              addErrors.username && "border border-red-500"
-            }`}
+            className={`w-full p-2 text-sm sm:text-base rounded-lg ${addErrors.username && "border border-red-500"}`}
             onChange={handleAddChange}
             placeholder="Username"
           />
-          {addErrors.username && (
-            <span className="text-red-500 text-xs sm:text-sm font-semibold">
-              {addErrors.username}
-            </span>
-          )}
+          {addErrors.username && <small className="text-red-500">{addErrors.username}</small>}
 
           <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
             Name <span className="text-red-600">*</span>
@@ -457,17 +375,11 @@ export default function UsersPage() {
           <InputText
             name="name"
             value={addForm.name}
-            className={`w-full p-2 text-sm sm:text-base rounded-lg ${
-              addErrors.name && "border border-red-500"
-            }`}
+            className={`w-full p-2 text-sm sm:text-base rounded-lg ${addErrors.name && "border border-red-500"}`}
             onChange={handleAddChange}
             placeholder="Full Name"
           />
-          {addErrors.name && (
-            <span className="text-red-500 text-xs sm:text-sm font-semibold">
-              {addErrors.name}
-            </span>
-          )}
+          {addErrors.name && <small className="text-red-500">{addErrors.name}</small>}
 
           <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
             Email <span className="text-red-600">*</span>
@@ -476,17 +388,11 @@ export default function UsersPage() {
             name="email"
             type="email"
             value={addForm.email}
-            className={`w-full p-2 text-sm sm:text-base rounded-lg ${
-              addErrors.email && "border border-red-500"
-            }`}
+            className={`w-full p-2 text-sm sm:text-base rounded-lg ${addErrors.email && "border border-red-500"}`}
             onChange={handleAddChange}
             placeholder="Email"
           />
-          {addErrors.email && (
-            <span className="text-red-500 text-xs sm:text-sm font-semibold">
-              {addErrors.email}
-            </span>
-          )}
+          {addErrors.email && <small className="text-red-500">{addErrors.email}</small>}
 
           <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
             Password <span className="text-red-600">*</span>
@@ -494,18 +400,12 @@ export default function UsersPage() {
           <InputText
             name="password"
             type="password"
-            className={`w-full p-2 text-sm sm:text-base rounded-lg ${
-              addErrors.password && "border border-red-500"
-            }`}
             value={addForm.password}
+            className={`w-full p-2 text-sm sm:text-base rounded-lg ${addErrors.password && "border border-red-500"}`}
             onChange={handleAddChange}
             placeholder="Password"
           />
-          {addErrors.password && (
-            <span className="text-red-500 text-xs sm:text-sm font-semibold">
-              {addErrors.password}
-            </span>
-          )}
+          {addErrors.password && <small className="text-red-500">{addErrors.password}</small>}
 
           <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
             Role <span className="text-red-600">*</span>
@@ -513,45 +413,26 @@ export default function UsersPage() {
           <Dropdown
             name="role"
             options={roles}
-            className={`w-full p-1 text-sm sm:text-base rounded-lg mt-1 ${
-              addErrors.role && "border border-red-500"
-            }`}
+            className={`w-full p-1 text-sm sm:text-base rounded-lg mt-1 ${addErrors.role && "border border-red-500"}`}
             value={addForm.role}
             onChange={handleAddChange}
             placeholder="Select Role"
             panelClassName="z-50"
           />
-          {addErrors.role && (
-            <span className="text-red-500 text-xs sm:text-sm font-semibold">
-              {addErrors.role}
-            </span>
-          )}
+          {addErrors.role && <small className="text-red-500">{addErrors.role}</small>}
         </form>
         <div className="flex justify-end gap-3 mt-5">
-          <Button
-            label="Save"
-            className="bg-gradient-to-r from-fuchsia-700 to-purple-700 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
-            onClick={saveAdd}
-            disabled={addSaveDisabled}
-          />
-          <Button
-            label="Cancel"
-            className="bg-gray-400 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
-            onClick={() => setShowAdd(false)}
-          />
+          <Button label="Save" onClick={saveAdd} disabled={addSaveDisabled} className="bg-gradient-to-r from-fuchsia-700 to-purple-700 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg" />
+          <Button label="Cancel" onClick={() => setShowAdd(false)} className="bg-gray-400 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg" />
         </div>
       </Dialog>
 
       {/* Edit User Dialog */}
       <Dialog
-        header={
-          <span className="text-lg sm:text-xl font-extrabold text-fuchsia-700">
-            Edit User
-          </span>
-        }
+        header="Edit User"
         visible={showEdit}
         position="right"
-        style={{ width: "400px", maxWidth: "100vw" }}
+        style={{ width: 400, maxWidth: "100vw" }}
         modal
         blockScroll
         className="rounded-lg shadow-xl"
@@ -564,17 +445,11 @@ export default function UsersPage() {
           <InputText
             name="username"
             value={editForm.username}
-            className={`w-full p-2 text-sm sm:text-base rounded-lg ${
-              editErrors.username && "border border-red-500"
-            }`}
+            className={`w-full p-2 text-sm sm:text-base rounded-lg ${editErrors.username && "border border-red-500"}`}
             onChange={handleEditChange}
             placeholder="Username"
           />
-          {editErrors.username && (
-            <span className="text-red-500 text-xs sm:text-sm font-semibold">
-              {editErrors.username}
-            </span>
-          )}
+          {editErrors.username && <small className="text-red-500">{editErrors.username}</small>}
 
           <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
             Name <span className="text-red-600">*</span>
@@ -582,17 +457,11 @@ export default function UsersPage() {
           <InputText
             name="name"
             value={editForm.name}
-            className={`w-full p-2 text-sm sm:text-base rounded-lg ${
-              editErrors.name && "border border-red-500"
-            }`}
+            className={`w-full p-2 text-sm sm:text-base rounded-lg ${editErrors.name && "border border-red-500"}`}
             onChange={handleEditChange}
             placeholder="Full Name"
           />
-          {editErrors.name && (
-            <span className="text-red-500 text-xs sm:text-sm font-semibold">
-              {editErrors.name}
-            </span>
-          )}
+          {editErrors.name && <small className="text-red-500">{editErrors.name}</small>}
 
           <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
             Email <span className="text-red-600">*</span>
@@ -601,17 +470,11 @@ export default function UsersPage() {
             name="email"
             type="email"
             value={editForm.email}
-            className={`w-full p-2 text-sm sm:text-base rounded-lg ${
-              editErrors.email && "border border-red-500"
-            }`}
+            className={`w-full p-2 text-sm sm:text-base rounded-lg ${editErrors.email && "border border-red-500"}`}
             onChange={handleEditChange}
             placeholder="Email"
           />
-          {editErrors.email && (
-            <span className="text-red-500 text-xs sm:text-sm font-semibold">
-              {editErrors.email}
-            </span>
-          )}
+          {editErrors.email && <small className="text-red-500">{editErrors.email}</small>}
 
           <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
             Role <span className="text-red-600">*</span>
@@ -619,32 +482,17 @@ export default function UsersPage() {
           <Dropdown
             name="role"
             options={roles}
+            className={`w-full p-1 text-sm sm:text-base rounded-lg mt-1 ${editErrors.role && "border border-red-500"}`}
             value={editForm.role}
-            className={`w-full p-1 text-sm sm:text-base rounded-lg mt-1 ${
-              editErrors.role && "border border-red-500"
-            }`}
             onChange={handleEditChange}
             placeholder="Select Role"
             panelClassName="z-50"
           />
-          {editErrors.role && (
-            <span className="text-red-500 text-xs sm:text-sm font-semibold">
-              {editErrors.role}
-            </span>
-          )}
+          {editErrors.role && <small className="text-red-500">{editErrors.role}</small>}
         </form>
         <div className="flex justify-end gap-3 mt-5">
-          <Button
-            label="Save"
-            className="bg-gradient-to-r from-fuchsia-700 to-purple-700 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
-            onClick={saveEdit}
-            disabled={editSaveDisabled}
-          />
-          <Button
-            label="Cancel"
-            className="bg-gray-400 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
-            onClick={() => setShowEdit(false)}
-          />
+          <Button label="Save" onClick={saveEdit} disabled={editSaveDisabled} className="bg-gradient-to-r from-fuchsia-700 to-purple-700 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg" />
+          <Button label="Cancel" onClick={() => setShowEdit(false)} className="bg-gray-400 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg" />
         </div>
       </Dialog>
     </div>
