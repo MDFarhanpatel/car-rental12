@@ -1,7 +1,8 @@
 
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '../../../../../../../generated/prisma-client';
+import { PrismaClient } from '@prisma/client';
 
+// Initialize Prisma client
 const prisma = new PrismaClient();
 
 export async function GET(request, { params }) {
@@ -56,5 +57,7 @@ export async function GET(request, { params }) {
   } catch (error) {
     console.error(`Error fetching settings for category ${params.category}:`, error);
     return NextResponse.json({ success: false, error: 'Failed to fetch settings' }, { status: 500 });
+  } finally {
+    await prisma.$disconnect();
   }
 }

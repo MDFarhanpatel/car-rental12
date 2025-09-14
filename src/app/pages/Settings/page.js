@@ -9,6 +9,7 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Sidebar } from 'primereact/sidebar';
 import { BreadCrumb } from 'primereact/breadcrumb';
+import { Checkbox } from 'primereact/checkbox';
 import { classNames } from 'primereact/utils';
 
 const dataTypeOptions = [
@@ -22,8 +23,9 @@ const categoryOptions = [
   { label: 'General', value: 'general' },
   { label: 'Email', value: 'email' },
   { label: 'Payment', value: 'payment' },
-  { label: 'Notification', value: 'notification' },
   { label: 'Security', value: 'security' },
+  { label: 'API', value: 'api' },
+  { label: 'UI', value: 'ui' },
 ];
 
 export default function SettingsPage() {
@@ -301,10 +303,9 @@ export default function SettingsPage() {
             </div>
             <div className="flex items-center">
               <label className="font-semibold mr-2">Active</label>
-              <InputText
-                type="checkbox"
+              <Checkbox
                 checked={form.active}
-                onChange={(e) => setForm({ ...form, active: e.target.checked })}
+                onChange={(e) => setForm({ ...form, active: e.checked })}
                 className="mt-1"
               />
             </div>
