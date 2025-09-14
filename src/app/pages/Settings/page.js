@@ -1,55 +1,176 @@
 "use client";
-import React, { useState } from 'react';
-import { BreadCrumb } from 'primereact/breadcrumb';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { Sidebar } from 'primereact/sidebar';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { Toast } from 'primereact/toast';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
-import { Toast } from 'primereact/toast';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { Sidebar } from 'primereact/sidebar';
+import { BreadCrumb } from 'primereact/breadcrumb';
 import { classNames } from 'primereact/utils';
-import { useRef, useEffect } from 'react';
-
-// Import CSS (put in index.js or App.js too)
-import 'primereact/resources/themes/lara-light-blue/theme.css';  // Use any PrimeReact blue theme you prefer
-import 'primereact/resources/primereact.min.css';
-import 'primeicons/primeicons.css';
-import 'primeflex/primeflex.css';
-
-
-const initialSettings = [
-  { name: 'site_name', value: 'karnataka', dataType: 'number' },
-  { name: 'support_email', value: 'carrentalsupport.com', dataType: 'string' },
-  { name: 'timezone', value: 'mumbai/india', dataType: 'string' }
-];
 
 const dataTypeOptions = [
   { label: 'String', value: 'string' },
   { label: 'Number', value: 'number' },
   { label: 'Boolean', value: 'boolean' },
-  { label: 'Date', value: 'date' }
+  { label: 'JSON', value: 'json' },
+];
+
+const categoryOptions = [
+  { label: 'General', value: 'general' },
+  { label: 'Email', value: 'email' },
+  { label: 'Payment', value: 'payment' },
+  { label: 'Notification', value: 'notification' },
+  { label: 'Security', value: 'security' },
 ];
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState(initialSettings);
+  const [settings, setSettings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
-  const [form, setForm] = useState({ name: '', value: '', dataType: 'string' });
-  const [editingIdx, setEditingIdx] = useState(null);
-
+  const [form, setForm] = useState({
+    key: '',
+    value: '',
+    category: 'general',
+    description: '',
+    dataType: 'string',
+    active: true
+  });
+  const [editingId, setEditingId] = useState(null);
   const toast = useRef(null);
 
   useEffect(() => {
-    if (sidebarVisible) {
-      document.body.style.overflow = 'hidden'; // Prevent background scroll
-    } else {
-      document.body.style.overflow = '';
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/v1/settings');
+      if (!response.ok) throw new Error('Failed to fetch settings');
+      const data = await response.json();
+      setSettings(data.data || []);
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+      toast.current.show({ severity: 'error', summary: 'Error', detail: 'Failed to load settings', life: 3000 });
+    } finally {
+      setLoading(false);
     }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [sidebarVisible]);
+  };
+
+  const openSidebarForAdd = () => {
+    setForm({
+      key: '',
+      value: '',
+      category: 'general',
+      description: '',
+      dataType: 'string',
+      active: true
+    });
+    setIsEdit(false);
+    setEditingId(null);
+    setSidebarVisible(true);
+  };
+
+  const openSidebarForEdit = (rowData) => {
+    setForm({
+      id: rowData.id,
+      key: rowData.key,
+      value: rowData.value,
+      category: rowData.category,
+      description: rowData.description || '',
+      dataType: rowData.dataType || 'string',
+      active: rowData.active
+    });
+    setEditingId(rowData.id);
+    setIsEdit(true);
+    setSidebarVisible(true);
+  };
+
+  const saveSettings = async () => {
+    try {
+      // Validate form
+      if (!form.key || !form.value || !form.category) {
+        toast.current.show({ 
+          severity: 'error', 
+          summary: 'Validation Error', 
+          detail: 'Key, value and category are required', 
+          life: 3000 
+        });
+        return;
+      }
+
+      const url = isEdit ? `/api/v1/settings?id=${editingId}` : '/api/v1/settings';
+      const method = isEdit ? 'PUT' : 'POST';
+      
+      console.log('Sending data:', form); // Debug log
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(form),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save setting');
+      }
+      
+      const result = await response.json();
+      
+      toast.current.show({ 
+        severity: 'success', 
+        summary: 'Success', 
+        detail: isEdit ? 'Setting updated successfully' : 'Setting added successfully', 
+        life: 3000 
+      });
+      
+      setSidebarVisible(false);
+      fetchSettings(); // Refresh the list
+    } catch (error) {
+      console.error('Error saving setting:', error);
+      toast.current.show({ 
+        severity: 'error', 
+        summary: 'Error', 
+        detail: error.message || 'Failed to save setting', 
+        life: 3000 
+      });
+    }
+  };
+
+  const deleteSetting = async (id) => {
+    try {
+      const response = await fetch(`/api/v1/settings?id=${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete setting');
+      }
+      
+      toast.current.show({ 
+        severity: 'success', 
+        summary: 'Success', 
+        detail: 'Setting deleted successfully', 
+        life: 3000 
+      });
+      
+      fetchSettings(); // Refresh the list
+    } catch (error) {
+      console.error('Error deleting setting:', error);
+      toast.current.show({ 
+        severity: 'error', 
+        summary: 'Error', 
+        detail: 'Failed to delete setting', 
+        life: 3000 
+      });
+    }
+  };
 
   const breadcrumbItems = [
     { label: 'Admin' },
@@ -57,49 +178,27 @@ export default function SettingsPage() {
   ];
   const breadcrumbHome = { icon: 'pi pi-home', url: '/' };
 
-  const openSidebarForAdd = () => {
-    setForm({ name: '', value: '', dataType: 'string' });
-    setIsEdit(false);
-    setEditingIdx(null);
-    setSidebarVisible(true);
-  };
-
-  const openSidebarForEdit = idx => {
-    setForm(settings[idx]);
-    setEditingIdx(idx);
-    setIsEdit(true);
-    setSidebarVisible(true);
-  };
-
-  const handleSave = () => {
-    if (!form.name || !form.dataType) return; // Prevent if required fields missing
-    if (isEdit && editingIdx !== null) {
-      const updated = [...settings];
-      updated[editingIdx] = form;
-      setSettings(updated);
-      toast.current.show({ severity: 'success', summary: 'Success', detail: 'Setting updated', life: 2200 });
-    } else {
-      setSettings([...settings, form]);
-      toast.current.show({ severity: 'success', summary: 'Success', detail: 'Setting added', life: 2200 });
-    }
-    setSidebarVisible(false);
-  };
-
-  const actionBodyTemplate = (rowData, options) => (
-    <Button
-      icon="pi pi-pencil"
-      className="p-button-text"
-      style={{ color: '#2563eb', background: 'transparent', border: 'none' }}
-      onClick={() => openSidebarForEdit(options.rowIndex)}
-      aria-label="Edit"
-    />
+  const actionBodyTemplate = (rowData) => (
+    <div className="flex gap-2">
+      <Button
+        icon="pi pi-pencil"
+        className="p-button-text p-button-rounded"
+        onClick={() => openSidebarForEdit(rowData)}
+        aria-label="Edit"
+      />
+      <Button
+        icon="pi pi-trash"
+        className="p-button-text p-button-rounded p-button-danger"
+        onClick={() => deleteSetting(rowData.id)}
+        aria-label="Delete"
+      />
+    </div>
   );
 
   return (
-    <div className={classNames('min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans', { 'overflow-hidden': sidebarVisible })}>
+    <div className="min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
       <Toast ref={toast} />
       <div className="p-7">
-        {/* Breadcrumb */}
         <BreadCrumb model={breadcrumbItems} home={breadcrumbHome} className="mb-6" />
         <h2 className="text-3xl font-semibold mb-8 text-white">Settings</h2>
         <div className="bg-white rounded shadow p-6">
@@ -108,87 +207,118 @@ export default function SettingsPage() {
               label="Add Setting"
               icon="pi pi-plus"
               className="p-button-rounded font-semibold"
-              style={{ background: '#2563eb', border: 'none', color: '#fff' }}
               onClick={openSidebarForAdd}
             />
           </div>
-          <DataTable value={settings} paginator rows={5} className=" border-18 border-black rounded-xl w-full">
-            <Column field="name" header="Name" />
-            <Column field="value" header="Value" />
-            <Column field="dataType" header="Data Type" />
-            <Column body={actionBodyTemplate} header="Actions" style={{ width: '80px' }} />
+          <DataTable 
+            value={settings} 
+            paginator 
+            rows={10} 
+            loading={loading}
+            emptyMessage="No settings found"
+            className="w-full"
+          >
+            <Column field="key" header="Key" sortable />
+            <Column field="value" header="Value" sortable />
+            <Column field="category" header="Category" sortable />
+            <Column field="dataType" header="Data Type" sortable />
+            <Column 
+              field="active" 
+              header="Status" 
+              body={(rowData) => rowData.active ? 'Active' : 'Inactive'} 
+              sortable 
+            />
+            <Column body={actionBodyTemplate} header="Actions" style={{ width: '120px' }} />
           </DataTable>
         </div>
       </div>
 
-      {/* Sidebar for Add/Edit */}
       <Sidebar
         visible={sidebarVisible}
         position="right"
-        style={{ width: '400px', background: '#f9fafb', borderLeft: '2px solid #2563eb' }}
+        style={{ width: '400px' }}
         onHide={() => setSidebarVisible(false)}
         blockScroll
       >
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full p-4">
           <div className="mb-6">
-            <h3 className="font-bold text-2xl text-[#2563eb] mb-1">
+            <h3 className="font-bold text-2xl mb-1">
               {isEdit ? 'Edit Setting' : 'Add Setting'}
             </h3>
             <p className="text-sm text-gray-500 mb-3">Please fill out all required fields.</p>
           </div>
-          <div className="flex-1 flex flex-col gap-5">
-            {/* Name Field */}
+          <div className="flex-1 flex flex-col gap-4">
             <div>
               <label className="font-semibold flex items-center">
-                Name <span className="text-red-500 ml-1">*</span>
+                Key <span className="text-red-500 ml-1">*</span>
               </label>
               <InputText
-                value={form.name}
-                onChange={e => setForm({ ...form, name: e.target.value })}
-                className="w-full mt-2 border-gray-300 rounded-lg focus:border-[#2563eb]"
+                value={form.key}
+                onChange={(e) => setForm({ ...form, key: e.target.value })}
+                className="w-full mt-1"
                 required
               />
             </div>
-            {/* Value Field */}
-            <div>
-              <label className="font-semibold">Value</label>
-              <InputText
-                value={form.value}
-                onChange={e => setForm({ ...form, value: e.target.value })}
-                className="w-full mt-2 border-gray-300 rounded-lg focus:border-[#2563eb]"
-              />
-            </div>
-            {/* Data Type Field */}
             <div>
               <label className="font-semibold flex items-center">
-                Data Type <span className="text-red-500 ml-1">*</span>
+                Value <span className="text-red-500 ml-1">*</span>
               </label>
+              <InputText
+                value={form.value}
+                onChange={(e) => setForm({ ...form, value: e.target.value })}
+                className="w-full mt-1"
+                required
+              />
+            </div>
+            <div>
+              <label className="font-semibold flex items-center">
+                Category <span className="text-red-500 ml-1">*</span>
+              </label>
+              <Dropdown
+                value={form.category}
+                options={categoryOptions}
+                onChange={(e) => setForm({ ...form, category: e.value })}
+                className="w-full mt-1"
+                required
+              />
+            </div>
+            <div>
+              <label className="font-semibold">Description</label>
+              <InputText
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                className="w-full mt-1"
+              />
+            </div>
+            <div>
+              <label className="font-semibold">Data Type</label>
               <Dropdown
                 value={form.dataType}
                 options={dataTypeOptions}
-                optionLabel="label"
-                optionValue="value"
-                onChange={e => setForm({ ...form, dataType: e.value })}
-                className="w-full mt-2"
-                placeholder="Select Data Type"
-                required
-                style={{ borderRadius: '0.75rem' }}
+                onChange={(e) => setForm({ ...form, dataType: e.value })}
+                className="w-full mt-1"
               />
             </div>
-            {/* Submit Button */}
+            <div className="flex items-center">
+              <label className="font-semibold mr-2">Active</label>
+              <InputText
+                type="checkbox"
+                checked={form.active}
+                onChange={(e) => setForm({ ...form, active: e.target.checked })}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <div className="mt-6 flex gap-3">
             <Button
-              label={isEdit ? 'Update Setting' : 'Add Setting'}
-              className="w-full mt-4 font-semibold py-3"
-              style={{
-                background: '#2563eb',
-                border: 'none',
-                borderRadius: '0.5rem',
-                fontSize: '1.1rem',
-                boxShadow: '0 4px 10px #2563eb50',
-                color: '#fff'
-              }}
-              onClick={handleSave}
-              disabled={!form.name || !form.dataType}
+              label={isEdit ? 'Update' : 'Add'}
+              className="p-button-primary w-full"
+              onClick={saveSettings}
+            />
+            <Button
+              label="Cancel"
+              className="p-button-secondary w-full"
+              onClick={() => setSidebarVisible(false)}
             />
           </div>
         </div>
