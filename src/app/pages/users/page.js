@@ -28,6 +28,7 @@ export default function UsersPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
   const [addForm, setAddForm] = useState({
     username: "",
     email: "",
@@ -45,7 +46,7 @@ export default function UsersPage() {
     username: "", 
     email: "", 
     name: "", 
-    password: "", // ← ADDED password error
+    password: "",
     role: "" 
   });
   const [editErrors, setEditErrors] = useState({
@@ -61,6 +62,24 @@ export default function UsersPage() {
     { label: "Admin", command: () => (window.location.href = "/admin/users") },
     { label: "Users" },
   ];
+
+  // Detect screen size for responsive design
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    // Set initial value
+    handleResize();
+    
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   // Fetch users from API
   useEffect(() => {
@@ -131,7 +150,7 @@ export default function UsersPage() {
   // Add user handlers
   const openAdd = () => {
     setAddForm({ username: "", email: "", name: "", password: "", role: "" });
-    setAddErrors({ username: "", email: "", name: "", password: "", role: "" }); // ← ADDED password error
+    setAddErrors({ username: "", email: "", name: "", password: "", role: "" });
     setShowAdd(true);
   };
 
@@ -153,7 +172,7 @@ export default function UsersPage() {
       username: validateField("username", addForm.username),
       email: validateField("email", addForm.email),
       name: validateField("name", addForm.name),
-      password: validateField("password", addForm.password), // ← ADDED password validation
+      password: validateField("password", addForm.password),
       role: validateField("role", addForm.role),
     };
     setAddErrors(errors);
@@ -312,7 +331,7 @@ export default function UsersPage() {
     !addForm.username.trim() ||
     !addForm.email.trim() ||
     !addForm.name.trim() ||
-    !addForm.password.trim() || // ← ADDED password check
+    !addForm.password.trim() ||
     !addForm.role ||
     Object.values(addErrors).some(error => error);
 
@@ -324,9 +343,9 @@ export default function UsersPage() {
     Object.values(editErrors).some(error => error);
 
   return (
-    <div className="p-4 min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
+    <div className="p-2 sm:p-4 min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
       <Toast ref={toast} />
-      <div className="mb-4">
+      <div className="mb-2 sm:mb-4">
         <BreadCrumb
           model={items}
           home={{
@@ -336,10 +355,10 @@ export default function UsersPage() {
           className="text-white font-bold mb-2"
         />
       </div>
-      <div className="text-3xl font-extrabold text-white mb-3 tracking-wide">
+      <div className="text-2xl sm:text-3xl font-extrabold text-white mb-3 tracking-wide">
         Users Management
       </div>
-      <div className="flex flex-wrap gap-4 mb-6 items-center">
+      <div className="flex flex-wrap gap-2 sm:gap-4 mb-4 sm:mb-6 items-center">
         <span className="font-extrabold text-white flex items-center">
           <i className="pi pi-check mr-1" />
           {activeCount} Active
@@ -355,11 +374,11 @@ export default function UsersPage() {
         <Button
           label="Add User"
           icon="pi pi-user-plus"
-          className="ml-auto bg-gradient-to-r from-fuchsia-700 to-purple-600 border-none font-extrabold px-6 py-2 text-lg rounded-lg hover:scale-105 transition-transform"
+          className="ml-auto bg-gradient-to-r from-fuchsia-700 to-purple-600 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-lg rounded-lg hover:scale-105 transition-transform"
           onClick={openAdd}
         />
       </div>
-      <div className="bg-zinc-900 p-6 rounded-2xl shadow-2xl overflow-x-auto">
+      <div className="bg-zinc-900 p-4 sm:p-6 rounded-2xl shadow-2xl overflow-x-auto">
         <DataTable
           value={users}
           stripedRows
@@ -371,28 +390,28 @@ export default function UsersPage() {
         >
           <Column
             field="name"
-            header={<span className="font-bold text-base">Name</span>}
+            header={<span className="font-bold text-sm sm:text-base">Name</span>}
           />
           <Column
             field="username"
-            header={<span className="font-bold text-base">Username</span>}
+            header={<span className="font-bold text-sm sm:text-base">Username</span>}
           />
           <Column
             field="email"
-            header={<span className="font-bold text-base">Email</span>}
+            header={<span className="font-bold text-sm sm:text-base">Email</span>}
           />
           <Column
             field="role_id"
-            header={<span className="font-bold text-base">Role</span>}
+            header={<span className="font-bold text-sm sm:text-base">Role</span>}
             body={roleTemplate}
           />
           <Column
             field="is_active"
-            header={<span className="font-bold text-base">Status</span>}
+            header={<span className="font-bold text-sm sm:text-base">Status</span>}
             body={statusTemplate}
           />
           <Column
-            header={<span className="font-bold text-base">Actions</span>}
+            header={<span className="font-bold text-sm sm:text-base">Actions</span>}
             body={actionBody}
           />
         </DataTable>
@@ -401,7 +420,7 @@ export default function UsersPage() {
       {/* Add User Dialog */}
       <Dialog
         header={
-          <span className="text-xl font-extrabold text-fuchsia-700">
+          <span className="text-lg sm:text-xl font-extrabold text-fuchsia-700">
             Add User
           </span>
         }
@@ -414,87 +433,87 @@ export default function UsersPage() {
         onHide={() => setShowAdd(false)}
       >
         <form className="flex flex-col gap-2 p-1">
-          <label className="font-bold text-base text-gray-700 mt-1">
+          <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
             Username <span className="text-red-600">*</span>
           </label>
           <InputText
             name="username"
             value={addForm.username}
-            className={`w-full p-2 text-base rounded-lg ${
+            className={`w-full p-2 text-sm sm:text-base rounded-lg ${
               addErrors.username && "border border-red-500"
             }`}
             onChange={handleAddChange}
             placeholder="Username"
           />
           {addErrors.username && (
-            <span className="text-red-500 text-xs font-semibold">
+            <span className="text-red-500 text-xs sm:text-sm font-semibold">
               {addErrors.username}
             </span>
           )}
 
-          <label className="font-bold text-base text-gray-700 mt-1">
+          <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
             Name <span className="text-red-600">*</span>
           </label>
           <InputText
             name="name"
             value={addForm.name}
-            className={`w-full p-2 text-base rounded-lg ${
+            className={`w-full p-2 text-sm sm:text-base rounded-lg ${
               addErrors.name && "border border-red-500"
             }`}
             onChange={handleAddChange}
             placeholder="Full Name"
           />
           {addErrors.name && (
-            <span className="text-red-500 text-xs font-semibold">
+            <span className="text-red-500 text-xs sm:text-sm font-semibold">
               {addErrors.name}
             </span>
           )}
 
-          <label className="font-bold text-base text-gray-700 mt-1">
+          <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
             Email <span className="text-red-600">*</span>
           </label>
           <InputText
             name="email"
             type="email"
             value={addForm.email}
-            className={`w-full p-2 text-base rounded-lg ${
+            className={`w-full p-2 text-sm sm:text-base rounded-lg ${
               addErrors.email && "border border-red-500"
             }`}
             onChange={handleAddChange}
             placeholder="Email"
           />
           {addErrors.email && (
-            <span className="text-red-500 text-xs font-semibold">
+            <span className="text-red-500 text-xs sm:text-sm font-semibold">
               {addErrors.email}
             </span>
           )}
 
-          <label className="font-bold text-base text-gray-700 mt-1">
+          <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
             Password <span className="text-red-600">*</span>
           </label>
           <InputText
             name="password"
             type="password"
-            className={`w-full p-2 text-base rounded-lg ${
+            className={`w-full p-2 text-sm sm:text-base rounded-lg ${
               addErrors.password && "border border-red-500"
-            }`} // ← ADDED error styling
+            }`}
             value={addForm.password}
             onChange={handleAddChange}
             placeholder="Password"
           />
-          {addErrors.password && ( // ← ADDED password error display
-            <span className="text-red-500 text-xs font-semibold">
+          {addErrors.password && (
+            <span className="text-red-500 text-xs sm:text-sm font-semibold">
               {addErrors.password}
             </span>
           )}
 
-          <label className="font-bold text-base text-gray-700 mt-1">
+          <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
             Role <span className="text-red-600">*</span>
           </label>
           <Dropdown
             name="role"
             options={roles}
-            className={`w-full p-1 text-base rounded-lg mt-1 ${
+            className={`w-full p-1 text-sm sm:text-base rounded-lg mt-1 ${
               addErrors.role && "border border-red-500"
             }`}
             value={addForm.role}
@@ -503,7 +522,7 @@ export default function UsersPage() {
             panelClassName="z-50"
           />
           {addErrors.role && (
-            <span className="text-red-500 text-xs font-semibold">
+            <span className="text-red-500 text-xs sm:text-sm font-semibold">
               {addErrors.role}
             </span>
           )}
@@ -511,13 +530,13 @@ export default function UsersPage() {
         <div className="flex justify-end gap-3 mt-5">
           <Button
             label="Save"
-            className="bg-gradient-to-r from-fuchsia-700 to-purple-700 border-none font-extrabold px-6 py-2 text-base rounded-lg"
+            className="bg-gradient-to-r from-fuchsia-700 to-purple-700 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
             onClick={saveAdd}
             disabled={addSaveDisabled}
           />
           <Button
             label="Cancel"
-            className="bg-gray-400 border-none font-extrabold px-6 py-2 text-base rounded-lg"
+            className="bg-gray-400 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
             onClick={() => setShowAdd(false)}
           />
         </div>
@@ -526,7 +545,7 @@ export default function UsersPage() {
       {/* Edit User Dialog */}
       <Dialog
         header={
-          <span className="text-xl font-extrabold text-fuchsia-700">
+          <span className="text-lg sm:text-xl font-extrabold text-fuchsia-700">
             Edit User
           </span>
         }
@@ -539,69 +558,69 @@ export default function UsersPage() {
         onHide={() => setShowEdit(false)}
       >
         <form className="flex flex-col gap-2 p-1">
-          <label className="font-bold text-base text-gray-700 mt-1">
+          <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
             Username <span className="text-red-600">*</span>
           </label>
           <InputText
             name="username"
             value={editForm.username}
-            className={`w-full p-2 text-base rounded-lg ${
+            className={`w-full p-2 text-sm sm:text-base rounded-lg ${
               editErrors.username && "border border-red-500"
             }`}
             onChange={handleEditChange}
             placeholder="Username"
           />
           {editErrors.username && (
-            <span className="text-red-500 text-xs font-semibold">
+            <span className="text-red-500 text-xs sm:text-sm font-semibold">
               {editErrors.username}
             </span>
           )}
 
-          <label className="font-bold text-base text-gray-700 mt-1">
+          <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
             Name <span className="text-red-600">*</span>
           </label>
           <InputText
             name="name"
             value={editForm.name}
-            className={`w-full p-2 text-base rounded-lg ${
+            className={`w-full p-2 text-sm sm:text-base rounded-lg ${
               editErrors.name && "border border-red-500"
             }`}
             onChange={handleEditChange}
             placeholder="Full Name"
           />
           {editErrors.name && (
-            <span className="text-red-500 text-xs font-semibold">
+            <span className="text-red-500 text-xs sm:text-sm font-semibold">
               {editErrors.name}
             </span>
           )}
 
-          <label className="font-bold text-base text-gray-700 mt-1">
+          <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
             Email <span className="text-red-600">*</span>
           </label>
           <InputText
             name="email"
             type="email"
             value={editForm.email}
-            className={`w-full p-2 text-base rounded-lg ${
+            className={`w-full p-2 text-sm sm:text-base rounded-lg ${
               editErrors.email && "border border-red-500"
             }`}
             onChange={handleEditChange}
             placeholder="Email"
           />
           {editErrors.email && (
-            <span className="text-red-500 text-xs font-semibold">
+            <span className="text-red-500 text-xs sm:text-sm font-semibold">
               {editErrors.email}
             </span>
           )}
 
-          <label className="font-bold text-base text-gray-700 mt-1">
+          <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
             Role <span className="text-red-600">*</span>
           </label>
           <Dropdown
             name="role"
             options={roles}
             value={editForm.role}
-            className={`w-full p-1 text-base rounded-lg mt-1 ${
+            className={`w-full p-1 text-sm sm:text-base rounded-lg mt-1 ${
               editErrors.role && "border border-red-500"
             }`}
             onChange={handleEditChange}
@@ -609,7 +628,7 @@ export default function UsersPage() {
             panelClassName="z-50"
           />
           {editErrors.role && (
-            <span className="text-red-500 text-xs font-semibold">
+            <span className="text-red-500 text-xs sm:text-sm font-semibold">
               {editErrors.role}
             </span>
           )}
@@ -617,13 +636,13 @@ export default function UsersPage() {
         <div className="flex justify-end gap-3 mt-5">
           <Button
             label="Save"
-            className="bg-gradient-to-r from-fuchsia-700 to-purple-700 border-none font-extrabold px-6 py-2 text-base rounded-lg"
+            className="bg-gradient-to-r from-fuchsia-700 to-purple-700 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
             onClick={saveEdit}
             disabled={editSaveDisabled}
           />
           <Button
             label="Cancel"
-            className="bg-gray-400 border-none font-extrabold px-6 py-2 text-base rounded-lg"
+            className="bg-gray-400 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
             onClick={() => setShowEdit(false)}
           />
         </div>
