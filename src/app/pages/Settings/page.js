@@ -321,23 +321,23 @@ export default function SettingsPage() {
   const breadcrumbHome = { icon: 'pi pi-home', url: '/' };
 
   const actionBodyTemplate = (rowData) => (
-    <div className="flex gap-2">
-      <Button
-        icon="pi pi-pencil"
-        className="p-button-text p-button-rounded p-button-sm"
-        onClick={() => openSidebarForEdit(rowData)}
-        aria-label="Edit"
-        tooltip="Edit"
-      />
-      <Button
-        icon="pi pi-trash"
-        className="p-button-text p-button-rounded p-button-danger p-button-sm"
-        onClick={() => deleteSetting(rowData.id)}
-        aria-label="Delete"
-        tooltip="Delete"
-      />
-    </div>
-  );
+      <div className="flex gap-2">
+        <Button
+          icon="pi pi-pencil"
+          className="p-button-text p-button-rounded p-button-sm"
+          onClick={() => openSidebarForEdit(rowData)}
+          aria-label="Edit"
+          tooltip="Edit"
+        />
+        <Button
+          icon="pi pi-trash"
+          className="p-button-text p-button-rounded p-button-danger p-button-sm"
+          onClick={() => deleteSetting(rowData.id)}
+          aria-label="Delete"
+          tooltip="Delete"
+        />
+      </div>
+    );
 
   const statusBodyTemplate = (rowData) => (
     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
