@@ -352,7 +352,7 @@ export default function UsersPage() {
             icon: "pi pi-home",
             command: () => (window.location.href = "/"),
           }}
-          className="text-white font-bold mb-2 sm:mb-4"
+          className="text-white font-bold mb-2"
         />
       </div>
       <div className="text-2xl sm:text-3xl font-extrabold text-white mb-2 sm:mb-3 tracking-wide">
@@ -387,6 +387,7 @@ export default function UsersPage() {
           loading={loading}
           className="p-datatable-sm text-white"
           emptyMessage="No users found."
+          responsiveLayout="scroll"
         >
           <Column
             field="name"
@@ -641,16 +642,6 @@ export default function UsersPage() {
             disabled={editSaveDisabled}
           />
           <Button
-            label="Cancel"
-            className="bg-gray-400 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
-            onClick={() => setShowEdit(false)}
-          />
-        </div>
-      </Dialog>
-    </div>
-  );
-}
-   <Button
             label="Cancel"
             className="bg-gray-400 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
             onClick={() => setShowEdit(false)}
