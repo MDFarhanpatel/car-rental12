@@ -18,7 +18,16 @@ export default function ChecklistCategoriesPage() {
   const [form, setForm] = useState({ name: "", description: "", active: true });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const toast = useRef(null);
+
+  // Detect mobile devices
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize(); // Set initial value
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Breadcrumb items
   const breadcrumbItems = [
@@ -249,11 +258,14 @@ export default function ChecklistCategoriesPage() {
         style={{ 
           backgroundColor: '#3b82f6', 
           borderColor: '#3b82f6',
-          color: 'white'
+          color: 'white',
+          width: isMobile ? '2rem' : '2.5rem',
+          height: isMobile ? '2rem' : '2.5rem'
         }}
         onClick={() => openEdit(rowData)} 
         aria-label="Edit"
         tooltip="Edit Category"
+        tooltipOptions={{ position: isMobile ? 'top' : 'left' }}
       />
     );
   };
@@ -272,24 +284,35 @@ export default function ChecklistCategoriesPage() {
 
   if (loading) {
     return (
-      <div className="p-4 min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
-        <div className="flex flex-column align-items-center justify-content-center" style={{ minHeight: '400px' }}>
-          <ProgressBar mode="indeterminate" style={{ height: '7px', width: '300px' }} />
-          <p className="text-white mt-3">Loading categories...</p>
+      <div className="p-2 sm:p-4 min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
+        <div className="flex flex-col items-center justify-center" style={{ minHeight: '400px' }}>
+          <ProgressBar mode="indeterminate" style={{ height: '7px', width: '80%', maxWidth: '300px' }} />
+          <p className="text-white mt-3 text-sm sm:text-base">Loading categories...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
+    <div className="p-2 sm:p-4 md:p-6 min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
       <Toast ref={toast} />
-      <div className="mb-4">
-        <BreadCrumb model={breadcrumbItems} home={{ icon: "pi pi-home" }} className="text-white font-bold" />
+      
+      {/* Breadcrumb - Hidden on very small screens */}
+      <div className="hidden sm:block mb-4">
+        <BreadCrumb 
+          model={breadcrumbItems} 
+          home={{ icon: "pi pi-home" }} 
+          className="text-white font-bold text-sm" 
+        />
       </div>
 
-      <div className="text-3xl font-extrabold text-white mb-3">Checklist Categories</div>
-      <div className="flex flex-wrap gap-4 mb-6 items-center">
+      {/* Page Title - Responsive text size */}
+      <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white mb-3">
+        Checklist Categories
+      </div>
+      
+      {/* Stats and Add Button - Responsive layout */}
+      <div className="flex flex-wrap gap-2 sm:gap-4 mb-4 sm:mb-6 items-center text-xs sm:text-sm">
         <span className="font-extrabold text-green-400 flex items-center">
           <i className="pi pi-check mr-1" />
           {activeCount} Active
@@ -305,12 +328,12 @@ export default function ChecklistCategoriesPage() {
         <Button 
           label="Add Category" 
           icon="pi pi-plus" 
-          className="ml-auto bg-black border-none font-bold hover:bg-gray-800" 
+          className="ml-auto bg-black border-none font-bold hover:bg-gray-800 text-xs sm:text-sm" 
           onClick={openAdd} 
         />
       </div>
       
-      <div className="bg-zinc-900 p-6 rounded-2xl shadow-2xl overflow-x-auto">
+      <div className="bg-zinc-900 p-4 sm:p-6 rounded-2xl shadow-2xl overflow-x-auto">
         <DataTable 
           value={categories} 
           stripedRows 
