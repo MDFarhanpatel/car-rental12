@@ -244,7 +244,7 @@ export default function ChecklistCategoriesPage() {
     return (
       <div className="p-4 min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
         <div className="flex flex-column align-items-center justify-content-center" style={{ minHeight: '400px' }}>
-          <ProgressBar mode="indeterminate" style={{ height: '6px', width: '300px' }} />
+          <ProgressBar mode="indeterminate" style={{ height: '7px', width: '300px' }} />
           <p className="text-white mt-3">Loading categories...</p>
         </div>
       </div>
