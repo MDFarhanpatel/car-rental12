@@ -10,7 +10,6 @@ import { Column } from 'primereact/column';
 import { Sidebar } from 'primereact/sidebar';
 import { BreadCrumb } from 'primereact/breadcrumb';
 import { Checkbox } from 'primereact/checkbox';
-import { classNames } from 'primereact/utils';
 
 const dataTypeOptions = [
   { label: 'String', value: 'string' },
@@ -154,7 +153,7 @@ export default function SettingsPage() {
     setSidebarVisible(true);
   };
 
-  const saveSettings = async () => {
+  const saveSettings = () => {
     try {
       // Validate form
       if (!form.key || !form.value || !form.category) {
@@ -162,6 +161,21 @@ export default function SettingsPage() {
           severity: 'error', 
           summary: 'Validation Error', 
           detail: 'Key, value and category are required', 
+          life: 3000 
+        });
+        return;
+      }
+
+      // Check for duplicate keys (excluding current item when editing)
+      const duplicateKey = settings.find(setting => 
+        setting.key === form.key && setting.id !== editingId
+      );
+      
+      if (duplicateKey) {
+        toast.current.show({ 
+          severity: 'error', 
+          summary: 'Validation Error', 
+          detail: 'A setting with this key already exists', 
           life: 3000 
         });
         return;
@@ -186,7 +200,7 @@ export default function SettingsPage() {
         // Add new setting
         const newSetting = {
           ...form,
-          id: Math.max(...settings.map(s => s.id)) + 1
+          id: Math.max(...settings.map(s => s.id), 0) + 1
         };
         setSettings([...settings, newSetting]);
         
@@ -210,7 +224,7 @@ export default function SettingsPage() {
     }
   };
 
-  const deleteSetting = async (id) => {
+  const deleteSetting = (id) => {
     try {
       const updatedSettings = settings.filter(setting => setting.id !== id);
       setSettings(updatedSettings);
