@@ -306,7 +306,7 @@ export default function UsersPage() {
       <div className="text-2xl sm:text-3xl font-extrabold text-white mb-3 tracking-wide">
         Users Management
       </div>
-      <div className="flex flex-wrap gap-2 sm:gap-4 mb-4 sm:mb-6 items-center">
+      <div className="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6 items-center">
         <span className="font-extrabold text-white flex items-center">
           <i className="pi pi-check mr-1" />
           {activeCount} Active
