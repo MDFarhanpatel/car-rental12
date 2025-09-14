@@ -39,7 +39,7 @@ export default function ChecklistCategoriesPage() {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/v1/checklistcatogary');
+      const response = await fetch('/api/v1/checklistcategories');
       const data = await response.json();
       
       if (data.success) {
@@ -97,7 +97,7 @@ export default function ChecklistCategoriesPage() {
     
     try {
       setSaving(true);
-      const response = await fetch('/api/v1/checklistcatogary', {
+      const response = await fetch('/api/v1/checklistcategories', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -146,7 +146,7 @@ export default function ChecklistCategoriesPage() {
     
     try {
       setSaving(true);
-      const response = await fetch('/api/v1/checklistcatogary', {
+      const response = await fetch('/api/v1/checklistcategories', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

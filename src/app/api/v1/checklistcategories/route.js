@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { NextResponse } from 'next/server';
 
 const prisma = new PrismaClient();
 
@@ -8,7 +8,7 @@ export async function GET(request) {
   try {
     const categories = await prisma.checklistCategory.findMany({
       orderBy: {
-        createdAt: 'desc'
+        name: 'asc'
       },
       include: {
         _count: {
@@ -18,25 +18,25 @@ export async function GET(request) {
         }
       }
     });
-
-    // Format the response to include itemsCount
+    
+    // Transform the data to include itemsCount
     const formattedCategories = categories.map(category => ({
       ...category,
       itemsCount: category._count.items
     }));
-
+    
     return NextResponse.json({ 
       success: true, 
-      data: formattedCategories,
-      message: 'Categories fetched successfully' 
+      data: formattedCategories 
     });
-    
   } catch (error) {
     console.error('Error fetching checklist categories:', error);
     return NextResponse.json({ 
       success: false, 
       error: 'Failed to fetch checklist categories' 
     }, { status: 500 });
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
@@ -99,7 +99,7 @@ export async function POST(request) {
   }
 }
 
-// PUT - Update existing category (keeping your existing implementation)
+// PUT - Update existing category
 export async function PUT(request) {
   try {
     const body = await request.json();
