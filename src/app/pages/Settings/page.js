@@ -28,9 +28,85 @@ const categoryOptions = [
   { label: 'UI', value: 'ui' },
 ];
 
+// Sample data for settings
+const sampleSettings = [
+  {
+    id: 1,
+    key: 'site_name',
+    value: 'Car Rental System',
+    category: 'general',
+    description: 'Name of the website',
+    dataType: 'string',
+    active: true
+  },
+  {
+    id: 2,
+    key: 'max_rental_days',
+    value: '30',
+    category: 'general',
+    description: 'Maximum number of days for rental',
+    dataType: 'number',
+    active: true
+  },
+  {
+    id: 3,
+    key: 'email_notifications',
+    value: 'true',
+    category: 'email',
+    description: 'Enable email notifications',
+    dataType: 'boolean',
+    active: true
+  },
+  {
+    id: 4,
+    key: 'smtp_host',
+    value: 'smtp.gmail.com',
+    category: 'email',
+    description: 'SMTP server host',
+    dataType: 'string',
+    active: true
+  },
+  {
+    id: 5,
+    key: 'payment_gateway',
+    value: 'stripe',
+    category: 'payment',
+    description: 'Default payment gateway',
+    dataType: 'string',
+    active: true
+  },
+  {
+    id: 6,
+    key: 'session_timeout',
+    value: '3600',
+    category: 'security',
+    description: 'Session timeout in seconds',
+    dataType: 'number',
+    active: true
+  },
+  {
+    id: 7,
+    key: 'api_rate_limit',
+    value: '100',
+    category: 'api',
+    description: 'API requests per minute',
+    dataType: 'number',
+    active: true
+  },
+  {
+    id: 8,
+    key: 'theme_color',
+    value: '#6366f1',
+    category: 'ui',
+    description: 'Primary theme color',
+    dataType: 'string',
+    active: true
+  }
+];
+
 export default function SettingsPage() {
-  const [settings, setSettings] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState(sampleSettings);
+  const [loading, setLoading] = useState(false);
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [form, setForm] = useState({
@@ -45,23 +121,9 @@ export default function SettingsPage() {
   const toast = useRef(null);
 
   useEffect(() => {
-    fetchSettings();
+    // No need to fetch from API, using sample data
+    setLoading(false);
   }, []);
-
-  const fetchSettings = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/v1/settings');
-      if (!response.ok) throw new Error('Failed to fetch settings');
-      const data = await response.json();
-      setSettings(data.data || []);
-    } catch (error) {
-      console.error('Error fetching settings:', error);
-      toast.current.show({ severity: 'error', summary: 'Error', detail: 'Failed to load settings', life: 3000 });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const openSidebarForAdd = () => {
     setForm({
@@ -105,41 +167,44 @@ export default function SettingsPage() {
         return;
       }
 
-      const url = isEdit ? `/api/v1/settings?id=${editingId}` : '/api/v1/settings';
-      const method = isEdit ? 'PUT' : 'POST';
-      
-      console.log('Sending data:', form); // Debug log
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(form),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save setting');
+      if (isEdit) {
+        // Update existing setting
+        const updatedSettings = settings.map(setting => 
+          setting.id === editingId 
+            ? { ...setting, ...form }
+            : setting
+        );
+        setSettings(updatedSettings);
+        
+        toast.current.show({ 
+          severity: 'success', 
+          summary: 'Success', 
+          detail: 'Setting updated successfully', 
+          life: 3000 
+        });
+      } else {
+        // Add new setting
+        const newSetting = {
+          ...form,
+          id: Math.max(...settings.map(s => s.id)) + 1
+        };
+        setSettings([...settings, newSetting]);
+        
+        toast.current.show({ 
+          severity: 'success', 
+          summary: 'Success', 
+          detail: 'Setting added successfully', 
+          life: 3000 
+        });
       }
       
-      const result = await response.json();
-      
-      toast.current.show({ 
-        severity: 'success', 
-        summary: 'Success', 
-        detail: isEdit ? 'Setting updated successfully' : 'Setting added successfully', 
-        life: 3000 
-      });
-      
       setSidebarVisible(false);
-      fetchSettings(); // Refresh the list
     } catch (error) {
       console.error('Error saving setting:', error);
       toast.current.show({ 
         severity: 'error', 
         summary: 'Error', 
-        detail: error.message || 'Failed to save setting', 
+        detail: 'Failed to save setting', 
         life: 3000 
       });
     }
@@ -147,13 +212,8 @@ export default function SettingsPage() {
 
   const deleteSetting = async (id) => {
     try {
-      const response = await fetch(`/api/v1/settings?id=${id}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to delete setting');
-      }
+      const updatedSettings = settings.filter(setting => setting.id !== id);
+      setSettings(updatedSettings);
       
       toast.current.show({ 
         severity: 'success', 
@@ -161,8 +221,6 @@ export default function SettingsPage() {
         detail: 'Setting deleted successfully', 
         life: 3000 
       });
-      
-      fetchSettings(); // Refresh the list
     } catch (error) {
       console.error('Error deleting setting:', error);
       toast.current.show({ 
