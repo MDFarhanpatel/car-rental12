@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { Toast } from 'primereact/toast';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -28,7 +28,7 @@ const categoryOptions = [
 ];
 
 // Sample data for settings
-const sampleSettings = [
+const initialSettings = [
   {
     id: 1,
     key: 'site_name',
@@ -100,11 +100,29 @@ const sampleSettings = [
     description: 'Primary theme color',
     dataType: 'string',
     active: true
+  },
+  {
+    id: 9,
+    key: 'maintenance_mode',
+    value: 'false',
+    category: 'general',
+    description: 'Enable maintenance mode',
+    dataType: 'boolean',
+    active: false
+  },
+  {
+    id: 10,
+    key: 'currency',
+    value: 'USD',
+    category: 'payment',
+    description: 'Default currency',
+    dataType: 'string',
+    active: true
   }
 ];
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState(sampleSettings);
+  const [settings, setSettings] = useState(initialSettings);
   const [loading, setLoading] = useState(false);
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
@@ -119,12 +137,7 @@ export default function SettingsPage() {
   const [editingId, setEditingId] = useState(null);
   const toast = useRef(null);
 
-  useEffect(() => {
-    // No need to fetch from API, using sample data
-    setLoading(false);
-  }, []);
-
-  const openSidebarForAdd = () => {
+  const resetForm = () => {
     setForm({
       key: '',
       value: '',
@@ -133,6 +146,10 @@ export default function SettingsPage() {
       dataType: 'string',
       active: true
     });
+  };
+
+  const openSidebarForAdd = () => {
+    resetForm();
     setIsEdit(false);
     setEditingId(null);
     setSidebarVisible(true);
@@ -140,7 +157,6 @@ export default function SettingsPage() {
 
   const openSidebarForEdit = (rowData) => {
     setForm({
-      id: rowData.id,
       key: rowData.key,
       value: rowData.value,
       category: rowData.category,
@@ -153,39 +169,76 @@ export default function SettingsPage() {
     setSidebarVisible(true);
   };
 
-  const saveSettings = () => {
-    try {
-      // Validate form
-      if (!form.key || !form.value || !form.category) {
-        toast.current.show({ 
-          severity: 'error', 
-          summary: 'Validation Error', 
-          detail: 'Key, value and category are required', 
-          life: 3000 
-        });
-        return;
-      }
+  const validateForm = () => {
+    if (!form.key?.trim()) {
+      toast.current.show({ 
+        severity: 'error', 
+        summary: 'Validation Error', 
+        detail: 'Key is required', 
+        life: 3000 
+      });
+      return false;
+    }
 
-      // Check for duplicate keys (excluding current item when editing)
-      const duplicateKey = settings.find(setting => 
-        setting.key === form.key && setting.id !== editingId
-      );
-      
-      if (duplicateKey) {
-        toast.current.show({ 
-          severity: 'error', 
-          summary: 'Validation Error', 
-          detail: 'A setting with this key already exists', 
-          life: 3000 
-        });
-        return;
-      }
+    if (!form.value?.trim()) {
+      toast.current.show({ 
+        severity: 'error', 
+        summary: 'Validation Error', 
+        detail: 'Value is required', 
+        life: 3000 
+      });
+      return false;
+    }
+
+    if (!form.category) {
+      toast.current.show({ 
+        severity: 'error', 
+        summary: 'Validation Error', 
+        detail: 'Category is required', 
+        life: 3000 
+      });
+      return false;
+    }
+
+    // Check for duplicate keys (excluding current item when editing)
+    const duplicateKey = settings.find(setting => 
+      setting.key.toLowerCase() === form.key.trim().toLowerCase() && setting.id !== editingId
+    );
+    
+    if (duplicateKey) {
+      toast.current.show({ 
+        severity: 'error', 
+        summary: 'Validation Error', 
+        detail: 'A setting with this key already exists', 
+        life: 3000 
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  const saveSettings = () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      setLoading(true);
 
       if (isEdit) {
         // Update existing setting
         const updatedSettings = settings.map(setting => 
           setting.id === editingId 
-            ? { ...setting, ...form }
+            ? { 
+                ...setting, 
+                key: form.key.trim(),
+                value: form.value.trim(),
+                category: form.category,
+                description: form.description.trim(),
+                dataType: form.dataType,
+                active: form.active
+              }
             : setting
         );
         setSettings(updatedSettings);
@@ -199,8 +252,13 @@ export default function SettingsPage() {
       } else {
         // Add new setting
         const newSetting = {
-          ...form,
-          id: Math.max(...settings.map(s => s.id), 0) + 1
+          id: Math.max(...settings.map(s => s.id), 0) + 1,
+          key: form.key.trim(),
+          value: form.value.trim(),
+          category: form.category,
+          description: form.description.trim(),
+          dataType: form.dataType,
+          active: form.active
         };
         setSettings([...settings, newSetting]);
         
@@ -213,6 +271,7 @@ export default function SettingsPage() {
       }
       
       setSidebarVisible(false);
+      resetForm();
     } catch (error) {
       console.error('Error saving setting:', error);
       toast.current.show({ 
@@ -221,6 +280,8 @@ export default function SettingsPage() {
         detail: 'Failed to save setting', 
         life: 3000 
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -246,6 +307,13 @@ export default function SettingsPage() {
     }
   };
 
+  const closeSidebar = () => {
+    setSidebarVisible(false);
+    resetForm();
+    setIsEdit(false);
+    setEditingId(null);
+  };
+
   const breadcrumbItems = [
     { label: 'Admin' },
     { label: 'Settings' }
@@ -256,17 +324,29 @@ export default function SettingsPage() {
     <div className="flex gap-2">
       <Button
         icon="pi pi-pencil"
-        className="p-button-text p-button-rounded"
+        className="p-button-text p-button-rounded p-button-sm"
         onClick={() => openSidebarForEdit(rowData)}
         aria-label="Edit"
+        tooltip="Edit"
       />
       <Button
         icon="pi pi-trash"
-        className="p-button-text p-button-rounded p-button-danger"
+        className="p-button-text p-button-rounded p-button-danger p-button-sm"
         onClick={() => deleteSetting(rowData.id)}
         aria-label="Delete"
+        tooltip="Delete"
       />
     </div>
+  );
+
+  const statusBodyTemplate = (rowData) => (
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+      rowData.active 
+        ? 'bg-green-100 text-green-800' 
+        : 'bg-red-100 text-red-800'
+    }`}>
+      {rowData.active ? 'Active' : 'Inactive'}
+    </span>
   );
 
   return (
@@ -274,13 +354,14 @@ export default function SettingsPage() {
       <Toast ref={toast} />
       <div className="p-7">
         <BreadCrumb model={breadcrumbItems} home={breadcrumbHome} className="mb-6" />
-        <h2 className="text-3xl font-semibold mb-8 text-white">Settings</h2>
-        <div className="bg-white rounded shadow p-6">
-          <div className="flex justify-end mb-4">
+        <h2 className="text-3xl font-semibold mb-8 text-white">Settings Management</h2>
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-semibold text-gray-800">System Settings</h3>
             <Button
               label="Add Setting"
               icon="pi pi-plus"
-              className="p-button-rounded font-semibold"
+              className="p-button-primary"
               onClick={openSidebarForAdd}
             />
           </div>
@@ -299,7 +380,7 @@ export default function SettingsPage() {
             <Column 
               field="active" 
               header="Status" 
-              body={(rowData) => rowData.active ? 'Active' : 'Inactive'} 
+              body={statusBodyTemplate}
               sortable 
             />
             <Column body={actionBodyTemplate} header="Actions" style={{ width: '120px' }} />
@@ -311,7 +392,7 @@ export default function SettingsPage() {
         visible={sidebarVisible}
         position="right"
         style={{ width: '400px' }}
-        onHide={() => setSidebarVisible(false)}
+        onHide={closeSidebar}
         blockScroll
       >
         <div className="flex flex-col h-full p-4">
@@ -387,11 +468,12 @@ export default function SettingsPage() {
               label={isEdit ? 'Update' : 'Add'}
               className="p-button-primary w-full"
               onClick={saveSettings}
+              loading={loading}
             />
             <Button
               label="Cancel"
               className="p-button-secondary w-full"
-              onClick={() => setSidebarVisible(false)}
+              onClick={closeSidebar}
             />
           </div>
         </div>
