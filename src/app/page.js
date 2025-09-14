@@ -117,8 +117,8 @@ export default function Login() {
       } else {
         setError(data.message || "Login failed");
       }
-    } catch (error) {
-      setError("Network error. Please try again.");
+    // } catch (error) {
+    //   setError("Network error. Please try again.");
     } finally {
       setIsLoading(false);
     }
