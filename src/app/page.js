@@ -15,26 +15,50 @@ export default function Login() {
     setIsLoading(true);
     
     try {
+      console.log('Attempting login...');
+      
       const response = await fetch("/api/v1/auth", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           username: emailOrUsername,
           password: password,
         }),
       });
       
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+      
+      // Check if response has content
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server returned non-JSON response');
+      }
+      
       const data = await response.json();
+      console.log('Response data:', data);
       
       if (response.ok) {
-        // Token is set as HTTP-only cookie by the API route
+        console.log('Login successful, redirecting...');
+        // Store token in localStorage as backup
+        if (data.data?.token) {
+          localStorage.setItem('authToken', data.data.token);
+        }
         router.push("/pages/home");
+        router.refresh();
       } else {
+        console.log('Login failed:', data.message);
         setError(data.message || "Login failed");
       }
     } catch (error) {
       console.error("Login error:", error);
-      setError("Network error. Please try again.");
+      if (error.message.includes('JSON')) {
+        setError("Server error. Please check the console for details.");
+      } else {
+        setError("Network error. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -65,7 +89,7 @@ export default function Login() {
               className="block mb-2 text-sm font-semibold text-black"
               htmlFor="emailOrUsername"
             >
-              Email or Username
+              Username
             </label>
             <input
               id="emailOrUsername"
@@ -75,10 +99,10 @@ export default function Login() {
               value={emailOrUsername}
               onChange={(e) => setEmailOrUsername(e.target.value)}
               autoComplete="username"
-              placeholder="Enter your email or username"
+              placeholder="Enter your username"
             />
             <p className="text-xs text-gray-600 mt-1">
-              You can use either your email address or username
+              Test with: admin
             </p>
           </div>
           <div>
@@ -98,6 +122,9 @@ export default function Login() {
               autoComplete="current-password"
               placeholder="••••••••"
             />
+            <p className="text-xs text-gray-600 mt-1">
+              Test with: password
+            </p>
           </div>
           <button
             type="submit"
