@@ -1,6 +1,5 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
-import Image from "next/image";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
@@ -9,8 +8,10 @@ import { Toast } from "primereact/toast";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Tag } from "primereact/tag";
-import { Chip } from "primereact/chip";
 import { BreadCrumb } from "primereact/breadcrumb";
+import { IconField } from "primereact/iconfield";
+import { InputIcon } from "primereact/inputicon";
+import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 
 const roles = [
   { label: "User", value: "USER" },
@@ -24,12 +25,25 @@ const roles = [
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [isMobile, setIsMobile] = useState(false);
+  const [saving, setSaving] = useState(false);
   const toast = useRef(null);
+
+  // Pagination states
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(10);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+
+  // Search states
+  const [globalFilterValue, setGlobalFilterValue] = useState('');
+  const [sortField, setSortField] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState(-1);
 
   const [addForm, setAddForm] = useState({
     username: "",
@@ -38,134 +52,246 @@ export default function UsersPage() {
     password: "",
     role: "",
   });
+
   const [editForm, setEditForm] = useState({
     username: "",
     email: "",
     name: "",
     role: "",
+    password: "",
   });
-  const [addErrors, setAddErrors] = useState({});
-  const [editErrors, setEditErrors] = useState({});
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  const [formErrors, setFormErrors] = useState({});
 
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  const breadcrumbItems = [
+    { label: "Home", command: () => window.location.href = "/" },
+    { label: "Admin", command: () => window.location.href = "/admin" },
+    { label: "Users" },
+  ];
 
-  async function fetchUsers() {
+  // Fetch users
+  const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/v1/users");
-      if (!res.ok) throw new Error("Failed to load users");
-      const data = await res.json();
+      setError(null);
+      
+      const skip = first;
+      const limit = rows;
+      const search = globalFilterValue;
+      
+      const url = `/api/v1/users?skip=${skip}&limit=${limit}&sortField=${sortField}&sortOrder=${sortOrder}&search=${encodeURIComponent(search)}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
       setUsers(data.users || []);
-    } catch (err) {
-      toast.current?.show({
-        severity: "error",
-        summary: "Error",
-        detail: err.message || "Failed to load users",
-        life: 3000,
-      });
+      setTotalRecords(data.totalCount || 0);
+      setCurrentPage(data.currentPage || 1);
+      setTotalPages(data.totalPages || 0);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  const roleTemplate = (row) => (
-    <Chip
-      label={row.role_id}
-      className="font-bold px-2 py-1 rounded-lg bg-gradient-to-r from-fuchsia-700 to-purple-600 text-white"
-    />
-  );
+  useEffect(() => {
+    fetchUsers();
+  }, [first, rows, sortField, sortOrder]);
 
-  const statusTemplate = (row) => (
-    <Tag
-      value={row.is_active ? "Active" : "Inactive"}
-      severity={row.is_active ? "success" : "danger"}
-      className="text-md px-3 py-1"
-    />
-  );
+  // Handle search with debounce
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setFirst(0); // Reset to first page when searching
+      fetchUsers();
+    }, 500);
 
-  const actionBody = (row) => (
-    <div className="flex gap-2">
-      <Button
-        icon="pi pi-pencil"
-        rounded
-        severity="secondary"
-        className="p-button-sm"
-        onClick={() => openEdit(row)}
-        aria-label="Edit"
-        style={{ background: "linear-gradient(to right, #7F1DFF 40%, #CA25A7 100%)" }}
+    return () => clearTimeout(timeoutId);
+  }, [globalFilterValue]);
+
+  // Handle pagination
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setRows(event.rows);
+  };
+
+  // Handle sorting
+  const onSort = (event) => {
+    setSortField(event.sortField);
+    setSortOrder(event.sortOrder);
+  };
+
+  // Global filter change
+  const onGlobalFilterChange = (e) => {
+    setGlobalFilterValue(e.target.value);
+  };
+
+  // Clear search
+  const clearSearch = () => {
+    setGlobalFilterValue('');
+  };
+
+  // Status template
+  const statusBodyTemplate = (rowData) => {
+    return (
+      <Tag 
+        value={rowData.is_active ? "Active" : "Inactive"} 
+        severity={rowData.is_active ? "success" : "danger"}
+        className="text-xs"
       />
-      <Button
-        icon="pi pi-trash"
-        rounded
-        severity="danger"
-        className="p-button-sm"
-        onClick={() => deleteUser(row)}
-        aria-label="Delete"
+    );
+  };
+
+  // Role template
+  const roleBodyTemplate = (rowData) => {
+    const getRoleSeverity = (role) => {
+      switch (role) {
+        case 'ADMIN': return 'danger';
+        case 'USER': return 'info';
+        case 'Hoster': return 'warning';
+        case 'Driver': return 'success';
+        default: return 'secondary';
+      }
+    };
+
+    return (
+      <Tag 
+        value={rowData.role_id} 
+        severity={getRoleSeverity(rowData.role_id)}
+        className="text-xs"
       />
-    </div>
-  );
+    );
+  };
 
-  const validateField = (field, value) =>
-    !value || value.trim() === ""
-      ? `${field.charAt(0).toUpperCase() + field.slice(1)} is required.`
-      : "";
+  // Actions template
+  const actionBodyTemplate = (rowData) => {
+    return (
+      <div className="flex gap-2">
+        <Button
+          icon="pi pi-pencil"
+          rounded
+          severity="secondary"
+          size="small"
+          onClick={() => openEditDialog(rowData)}
+          tooltip="Edit"
+        />
+        <Button
+          icon="pi pi-trash"
+          rounded
+          severity="danger"
+          size="small"
+          onClick={() => confirmDelete(rowData)}
+          tooltip="Delete"
+        />
+      </div>
+    );
+  };
 
-  function handleAddChange(e) {
-    const { name, value } = e.target ? e.target : { name: "role", value: e.value };
-    setAddForm((prev) => ({ ...prev, [name]: value }));
-    setAddErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
-  }
+  // Confirm delete
+  const confirmDelete = (user) => {
+    confirmDialog({
+      message: `Are you sure you want to delete ${user.name}?`,
+      header: 'Confirm Deletion',
+      icon: 'pi pi-trash',
+      acceptClassName: 'p-button-danger',
+      accept: () => deleteUser(user),
+      rejectClassName: 'p-button-secondary',
+    });
+  };
 
-  function handleEditChange(e) {
-    const { name, value } = e.target ? e.target : { name: "role", value: e.value };
-    setEditForm((prev) => ({ ...prev, [name]: value }));
-    setEditErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
-  }
-
-  const openAdd = () => {
-    setAddForm({ username: "", email: "", name: "", password: "", role: "" });
-    setAddErrors({});
+  // Open dialogs
+  const openAddDialog = () => {
+    setAddForm({
+      username: "",
+      email: "",
+      name: "",
+      password: "",
+      role: "",
+    });
     setShowAdd(true);
   };
 
-  async function saveAdd() {
-    const errors = {
-      username: validateField("username", addForm.username),
-      email: validateField("email", addForm.email),
-      name: validateField("name", addForm.name),
-      password: validateField("password", addForm.password),
-      role: validateField("role", addForm.role),
-    };
-    setAddErrors(errors);
-    if (Object.values(errors).some((e) => e)) return;
+  const openEditDialog = (user) => {
+    setSelectedUser(user);
+    setEditForm({
+      username: user.username,
+      email: user.email,
+      name: user.name,
+      role: user.role_id,
+      password: "",
+    });
+    setShowEdit(true);
+  };
 
+  // Validate form
+  const validateForm = (form, isEdit = false) => {
+    const errors = {};
+    
+    if (!form.username.trim()) {
+      errors.username = "Username is required";
+    }
+    
+    if (!form.name.trim()) {
+      errors.name = "Name is required";
+    }
+    
+    if (!form.email.trim()) {
+      errors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(form.email)) {
+      errors.email = "Email is invalid";
+    }
+    
+    if (!isEdit && !form.password.trim()) {
+      errors.password = "Password is required";
+    }
+    
+    if (!form.role) {
+      errors.role = "Role is required";
+    }
+    
+    return errors;
+  };
+
+  // Add user
+  const addUser = async () => {
+    const errors = validateForm(addForm);
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    
+    setSaving(true);
     try {
-      const res = await fetch("/api/v1/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/v1/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(addForm),
       });
-      const data = await res.json();
-      if (res.ok) {
-        setShowAdd(false);
-        fetchUsers();
+
+      const data = await response.json();
+
+      if (response.ok) {
         toast.current?.show({
           severity: "success",
-          summary: "User Added",
-          detail: `${addForm.name} was added successfully!`,
-          life: 2100,
+          summary: "Success",
+          detail: "User added successfully",
+          life: 3000,
         });
+        setShowAdd(false);
+        setAddForm({
+          username: "",
+          email: "",
+          name: "",
+          password: "",
+          role: "",
+        });
+        fetchUsers();
       } else {
         toast.current?.show({
           severity: "error",
@@ -174,59 +300,54 @@ export default function UsersPage() {
           life: 3000,
         });
       }
-    } catch {
+    } catch (error) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "Failed to add user",
         life: 3000,
       });
+    } finally {
+      setSaving(false);
     }
-  }
-
-  const openEdit = (row) => {
-    setSelectedUser(row);
-    setEditForm({
-      username: row.username,
-      email: row.email || "",
-      name: row.name,
-      role: row.role_id,
-    });
-    setEditErrors({});
-    setShowEdit(true);
   };
 
-  async function saveEdit() {
-    const errors = {
-      username: validateField("username", editForm.username),
-      email: validateField("email", editForm.email),
-      name: validateField("name", editForm.name),
-      role: validateField("role", editForm.role),
-    };
-    setEditErrors(errors);
-    if (Object.values(errors).some((e) => e)) return;
-
+  // Update user
+  const updateUser = async () => {
+    const errors = validateForm(editForm, true);
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    
+    setSaving(true);
     try {
-      const res = await fetch(`/api/v1/users/${selectedUser.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: editForm.username,
-          email: editForm.email,
-          name: editForm.name,
-          role_id: editForm.role,
-        }),
+      const response = await fetch(`/api/v1/users/${selectedUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editForm),
       });
-      const data = await res.json();
-      if (res.ok) {
-        setShowEdit(false);
-        fetchUsers();
+
+      const data = await response.json();
+
+      if (response.ok) {
         toast.current?.show({
           severity: "success",
-          summary: "User Updated",
-          detail: "User information saved!",
-          life: 2100,
+          summary: "Success",
+          detail: "User updated successfully",
+          life: 3000,
         });
+        setShowEdit(false);
+        setEditForm({
+          username: "",
+          email: "",
+          name: "",
+          role: "",
+          password: "",
+        });
+        fetchUsers();
       } else {
         toast.current?.show({
           severity: "error",
@@ -235,34 +356,37 @@ export default function UsersPage() {
           life: 3000,
         });
       }
-    } catch {
+    } catch (error) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
         detail: "Failed to update user",
         life: 3000,
       });
+    } finally {
+      setSaving(false);
     }
-  }
+  };
 
-  async function deleteUser(user) {
-    if (!window.confirm(`Are you sure you want to delete ${user.name}?`)) return;
+  // Delete user
+  const deleteUser = async (user) => {
     try {
-      const res = await fetch(`/api/v1/users/${user.id}`, {
-        method: "DELETE",
+      const response = await fetch(`/api/v1/users/${user.id}`, {
+        method: 'DELETE',
       });
-      if (res.ok) {
-        fetchUsers();
+
+      if (response.ok) {
         toast.current?.show({
           severity: "success",
-          summary: "User Deleted",
-          detail: `${user.name} was deleted successfully!`,
-          life: 2100,
+          summary: "Success",
+          detail: "User deleted successfully",
+          life: 3000,
         });
+        fetchUsers();
       } else {
-        throw new Error("Failed to delete user");
+        throw new Error('Failed to delete user');
       }
-    } catch {
+    } catch (error) {
       toast.current?.show({
         severity: "error",
         summary: "Error",
@@ -270,80 +394,139 @@ export default function UsersPage() {
         life: 3000,
       });
     }
+  };
+
+  // Render header with search
+  const renderHeader = () => {
+    return (
+      <div className="flex flex-wrap gap-4 justify-between items-center mb-4">
+        <div className="flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-white m-0">Users Management</h2>
+          <Tag value={`${totalRecords} Total`} severity="info" />
+        </div>
+        
+        <div className="flex gap-2 items-center">
+          {/* Search Input with proper styling */}
+          <div className="relative">
+            <IconField iconPosition="left">
+              <InputIcon className="pi pi-search text-gray-400" />
+              <InputText
+                value={globalFilterValue}
+                onChange={onGlobalFilterChange}
+                placeholder="Search users..."
+                className="pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-700 placeholder-gray-400"
+                style={{ 
+                  minWidth: '250px',
+                  paddingLeft: '2.5rem',
+                  paddingRight: '2.5rem'
+                }}
+              />
+              {globalFilterValue && (
+                <button
+                  onClick={clearSearch}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  type="button"
+                >
+                  <i className="pi pi-times text-sm"></i>
+                </button>
+              )}
+            </IconField>
+          </div>
+          
+          <Button
+            label="Add User"
+            icon="pi pi-plus"
+            onClick={openAddDialog}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 border-none font-bold px-4 py-2 text-sm rounded-lg hover:scale-105 transition-transform"
+          />
+        </div>
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 flex items-center justify-center">
+        <div className="text-white text-xl">Loading users...</div>
+      </div>
+    );
   }
 
-  const activeCount = users.filter((u) => u.is_active).length;
-  const inactiveCount = users.length - activeCount;
-
-  const addSaveDisabled =
-    !addForm.username.trim() ||
-    !addForm.email.trim() ||
-    !addForm.name.trim() ||
-    !addForm.password.trim() ||
-    !addForm.role ||
-    Object.values(addErrors).some((error) => error);
-
-  const editSaveDisabled =
-    !editForm.username.trim() ||
-    !editForm.email.trim() ||
-    !editForm.name.trim() ||
-    !editForm.role ||
-    Object.values(editErrors).some((error) => error);
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 flex items-center justify-center">
+        <div className="text-red-400 text-xl">Error: {error}</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-2 sm:p-4 min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
+    <div className="min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
       <Toast ref={toast} />
-      <div className="mb-2 sm:mb-4">
-        <BreadCrumb
-          model={[
-            { label: "Home", command: () => (window.location.href = "/pages/home") },
-            { label: "Admin", command: () => (window.location.href = "/admin/users") },
-            { label: "Users" },
-          ]}
-          home={{ icon: "pi pi-home", command: () => (window.location.href = "/") }}
-          className="text-white font-bold mb-2"
-        />
-      </div>
-      <div className="text-2xl sm:text-3xl font-extrabold text-white mb-3 tracking-wide">
-        Users Management
-      </div>
-      <div className="flex flex-wrap gap-2 sm:gap-4 mb-4 sm:mb-6 items-center">
-        <span className="font-extrabold text-white flex items-center">
-          <i className="pi pi-check mr-1" />
-          {activeCount} Active
-        </span>
-        <span className="font-extrabold text-rose-400 flex items-center">
-          <i className="pi pi-times mr-1" />
-          {inactiveCount} Inactive
-        </span>
-        <span className="font-extrabold text-white flex items-center">
-          <i className="pi pi-list mr-1" />
-          {users.length} Total Users
-        </span>
-        <Button
-          label="Add User"
-          icon="pi pi-user-plus"
-          className="ml-auto bg-gradient-to-r from-fuchsia-700 to-purple-600 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-lg rounded-lg hover:scale-105 transition-transform"
-          onClick={openAdd}
-        />
-      </div>
-      <div className="bg-zinc-900 p-4 sm:p-6 rounded-2xl shadow-2xl overflow-x-auto">
-        <DataTable
-          value={users}
-          stripedRows
-          paginator
-          rows={10}
-          loading={loading}
-          className="p-datatable-sm text-white"
-          emptyMessage="No users found."
-        >
-          <Column field="name" header="Name" />
-          <Column field="username" header="Username" />
-          <Column field="email" header="Email" />
-          <Column field="role_id" header="Role" body={roleTemplate} />
-          <Column field="is_active" header="Status" body={statusTemplate} />
-          <Column header="Actions" body={actionBody} />
-        </DataTable>
+      <ConfirmDialog />
+      
+      <div className="p-6">
+        {/* Breadcrumb */}
+        <div className="mb-6">
+          <BreadCrumb 
+            model={breadcrumbItems} 
+            home={{ icon: "pi pi-home", command: () => window.location.href = "/" }} 
+            className="text-white font-bold"
+          />
+        </div>
+        
+        {/* Header with search */}
+        {renderHeader()}
+        
+        {/* Users Table */}
+        <div className="bg-zinc-900 p-4 sm:p-6 rounded-2xl shadow-2xl overflow-x-auto">
+          <DataTable
+            value={users}
+            stripedRows
+            paginator={false}
+            rows={rows}
+            loading={loading}
+            className="p-datatable-sm text-white border-0"
+            emptyMessage="No users found."
+            first={first}
+            rows={rows}
+            totalRecords={totalRecords}
+            onPage={onPageChange}
+            onSort={onSort}
+            sortField={sortField}
+            sortOrder={sortOrder}
+            globalFilter={globalFilterValue}
+            globalFilterFields={["name", "username", "email", "role_id"]}
+          >
+            <Column field="name" header="Name" sortable />
+            <Column field="username" header="Username" sortable />
+            <Column field="email" header="Email" sortable />
+            <Column field="role_id" header="Role" body={roleBodyTemplate} sortable />
+            <Column field="is_active" header="Status" body={statusBodyTemplate} sortable />
+            <Column header="Actions" body={actionBodyTemplate} />
+          </DataTable>
+          
+          {/* Paginator */}
+          <div className="flex flex-wrap justify-between items-center mt-4 gap-4">
+            <div className="text-white text-sm">
+              Showing {first + 1} to {Math.min(first + rows, totalRecords)} of {totalRecords} entries
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                icon="pi pi-chevron-left" 
+                className="p-button-text p-button-sm" 
+                onClick={() => setFirst(Math.max(0, first - rows))}
+                disabled={first === 0}
+              />
+              <Button 
+                icon="pi pi-chevron-right" 
+                className="p-button-text p-button-sm" 
+                onClick={() => setFirst(Math.min(totalRecords - rows, first + rows))}
+                disabled={first >= totalRecords - rows}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Add User Dialog */}
@@ -357,74 +540,93 @@ export default function UsersPage() {
         className="rounded-lg shadow-xl"
         onHide={() => setShowAdd(false)}
       >
-        <form className="flex flex-col gap-2 p-1">
-          <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
-            Username <span className="text-red-600">*</span>
-          </label>
-          <InputText
-            name="username"
-            value={addForm.username}
-            className={`w-full p-2 text-sm sm:text-base rounded-lg ${addErrors.username && "border border-red-500"}`}
-            onChange={handleAddChange}
-            placeholder="Username"
-          />
-          {addErrors.username && <small className="text-red-500">{addErrors.username}</small>}
+        <form className="flex flex-col gap-4 p-1">
+          <div className="mt-4">
+            <label htmlFor="add-username" className="block text-sm text-gray-600 mb-1">Username <span className="text-red-600">*</span></label>
+            <InputText
+              id="add-username"
+              name="username"
+              value={addForm.username}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                formErrors.username ? 'border-red-500' : 'border-gray-300'
+              }`}
+              onChange={(e) => setAddForm({...addForm, username: e.target.value})}
+            />
+            {formErrors.username && <span className="text-red-500 text-xs mt-1">{formErrors.username}</span>}
+          </div>
 
-          <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
-            Name <span className="text-red-600">*</span>
-          </label>
-          <InputText
-            name="name"
-            value={addForm.name}
-            className={`w-full p-2 text-sm sm:text-base rounded-lg ${addErrors.name && "border border-red-500"}`}
-            onChange={handleAddChange}
-            placeholder="Full Name"
-          />
-          {addErrors.name && <small className="text-red-500">{addErrors.name}</small>}
+          <div className="mt-2">
+            <label htmlFor="add-name" className="block text-sm text-gray-600 mb-1">Full Name <span className="text-red-600">*</span></label>
+            <InputText
+              id="add-name"
+              name="name"
+              value={addForm.name}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                formErrors.name ? 'border-red-500' : 'border-gray-300'
+              }`}
+              onChange={(e) => setAddForm({...addForm, name: e.target.value})}
+            />
+            {formErrors.name && <span className="text-red-500 text-xs mt-1">{formErrors.name}</span>}
+          </div>
 
-          <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
-            Email <span className="text-red-600">*</span>
-          </label>
-          <InputText
-            name="email"
-            type="email"
-            value={addForm.email}
-            className={`w-full p-2 text-sm sm:text-base rounded-lg ${addErrors.email && "border border-red-500"}`}
-            onChange={handleAddChange}
-            placeholder="Email"
-          />
-          {addErrors.email && <small className="text-red-500">{addErrors.email}</small>}
+          <div className="mt-2">
+            <label htmlFor="add-email" className="block text-sm text-gray-600 mb-1">Email <span className="text-red-600">*</span></label>
+            <InputText
+              id="add-email"
+              name="email"
+              type="email"
+              value={addForm.email}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                formErrors.email ? 'border-red-500' : 'border-gray-300'
+              }`}
+              onChange={(e) => setAddForm({...addForm, email: e.target.value})}
+            />
+            {formErrors.email && <span className="text-red-500 text-xs mt-1">{formErrors.email}</span>}
+          </div>
 
-          <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
-            Password <span className="text-red-600">*</span>
-          </label>
-          <InputText
-            name="password"
-            type="password"
-            value={addForm.password}
-            className={`w-full p-2 text-sm sm:text-base rounded-lg ${addErrors.password && "border border-red-500"}`}
-            onChange={handleAddChange}
-            placeholder="Password"
-          />
-          {addErrors.password && <small className="text-red-500">{addErrors.password}</small>}
+          <div className="mt-2">
+            <label htmlFor="add-password" className="block text-sm text-gray-600 mb-1">Password <span className="text-red-600">*</span></label>
+            <InputText
+              id="add-password"
+              name="password"
+              type="password"
+              value={addForm.password}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                formErrors.password ? 'border-red-500' : 'border-gray-300'
+              }`}
+              onChange={(e) => setAddForm({...addForm, password: e.target.value})}
+            />
+            {formErrors.password && <span className="text-red-500 text-xs mt-1">{formErrors.password}</span>}
+          </div>
 
-          <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
-            Role <span className="text-red-600">*</span>
-          </label>
-          <Dropdown
-            name="role"
-            options={roles}
-            className={`w-full p-1 text-sm sm:text-base rounded-lg mt-1 ${addErrors.role && "border border-red-500"}`}
-            value={addForm.role}
-            onChange={handleAddChange}
-            placeholder="Select Role"
-            panelClassName="z-50"
-          />
-          {addErrors.role && <small className="text-red-500">{addErrors.role}</small>}
+          <div className="mt-2">
+            <label htmlFor="add-role" className="block text-sm text-gray-600 mb-1">Role <span className="text-red-600">*</span></label>
+            <Dropdown
+              id="add-role"
+              name="role"
+              options={roles}
+              className={`w-full rounded-lg border ${
+                formErrors.role ? 'border-red-500' : 'border-gray-300'
+              }`}
+              value={addForm.role}
+              onChange={(e) => setAddForm({...addForm, role: e.value})}
+              panelClassName="z-50"
+            />
+            {formErrors.role && <span className="text-red-500 text-xs mt-1">{formErrors.role}</span>}
+          </div>
         </form>
         <div className="flex justify-end gap-3 mt-5">
-          <Button label="Save" onClick={saveAdd} disabled={addSaveDisabled} className="bg-gradient-to-r from-fuchsia-700 to-purple-700 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg" />
-          <Button label="Cancel" onClick={() => setShowAdd(false)} className="bg-gray-400 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg" />
+          <Button 
+            label={saving ? "Saving..." : "Save"} 
+            onClick={addUser} 
+            className="bg-gradient-to-r from-blue-600 to-purple-600 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg" 
+            disabled={saving}
+          />
+          <Button 
+            label="Cancel" 
+            onClick={() => setShowAdd(false)} 
+            className="bg-gray-400 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg" 
+          />
         </div>
       </Dialog>
 
@@ -439,61 +641,78 @@ export default function UsersPage() {
         className="rounded-lg shadow-xl"
         onHide={() => setShowEdit(false)}
       >
-        <form className="flex flex-col gap-2 p-1">
-          <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
-            Username <span className="text-red-600">*</span>
-          </label>
-          <InputText
-            name="username"
-            value={editForm.username}
-            className={`w-full p-2 text-sm sm:text-base rounded-lg ${editErrors.username && "border border-red-500"}`}
-            onChange={handleEditChange}
-            placeholder="Username"
-          />
-          {editErrors.username && <small className="text-red-500">{editErrors.username}</small>}
+        <form className="flex flex-col gap-4 p-1">
+          <div className="mt-4">
+            <label htmlFor="edit-username" className="block text-sm text-gray-600 mb-1">Username <span className="text-red-600">*</span></label>
+            <InputText
+              id="edit-username"
+              name="username"
+              value={editForm.username}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                formErrors.username ? 'border-red-500' : 'border-gray-300'
+              }`}
+              onChange={(e) => setEditForm({...editForm, username: e.target.value})}
+            />
+            {formErrors.username && <span className="text-red-500 text-xs mt-1">{formErrors.username}</span>}
+          </div>
 
-          <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
-            Name <span className="text-red-600">*</span>
-          </label>
-          <InputText
-            name="name"
-            value={editForm.name}
-            className={`w-full p-2 text-sm sm:text-base rounded-lg ${editErrors.name && "border border-red-500"}`}
-            onChange={handleEditChange}
-            placeholder="Full Name"
-          />
-          {editErrors.name && <small className="text-red-500">{editErrors.name}</small>}
+          <div className="mt-2">
+            <label htmlFor="edit-name" className="block text-sm text-gray-600 mb-1">Full Name <span className="text-red-600">*</span></label>
+            <InputText
+              id="edit-name"
+              name="name"
+              value={editForm.name}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                formErrors.name ? 'border-red-500' : 'border-gray-300'
+              }`}
+              onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+            />
+            {formErrors.name && <span className="text-red-500 text-xs mt-1">{formErrors.name}</span>}
+          </div>
 
-          <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
-            Email <span className="text-red-600">*</span>
-          </label>
-          <InputText
-            name="email"
-            type="email"
-            value={editForm.email}
-            className={`w-full p-2 text-sm sm:text-base rounded-lg ${editErrors.email && "border border-red-500"}`}
-            onChange={handleEditChange}
-            placeholder="Email"
-          />
-          {editErrors.email && <small className="text-red-500">{editErrors.email}</small>}
+          <div className="mt-2">
+            <label htmlFor="edit-email" className="block text-sm text-gray-600 mb-1">Email <span className="text-red-600">*</span></label>
+            <InputText
+              id="edit-email"
+              name="email"
+              type="email"
+              value={editForm.email}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                formErrors.email ? 'border-red-500' : 'border-gray-300'
+              }`}
+              onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+            />
+            {formErrors.email && <span className="text-red-500 text-xs mt-1">{formErrors.email}</span>}
+          </div>
 
-          <label className="font-bold text-sm sm:text-base text-gray-700 mt-1">
-            Role <span className="text-red-600">*</span>
-          </label>
-          <Dropdown
-            name="role"
-            options={roles}
-            className={`w-full p-1 text-sm sm:text-base rounded-lg mt-1 ${editErrors.role && "border border-red-500"}`}
-            value={editForm.role}
-            onChange={handleEditChange}
-            placeholder="Select Role"
-            panelClassName="z-50"
-          />
-          {editErrors.role && <small className="text-red-500">{editErrors.role}</small>}
+          <div className="mt-2">
+            <label htmlFor="edit-role" className="block text-sm text-gray-600 mb-1">Role <span className="text-red-600">*</span></label>
+            <Dropdown
+              id="edit-role"
+              name="role"
+              options={roles}
+              className={`w-full rounded-lg border ${
+                formErrors.role ? 'border-red-500' : 'border-gray-300'
+              }`}
+              value={editForm.role}
+              onChange={(e) => setEditForm({...editForm, role: e.value})}
+              panelClassName="z-50"
+            />
+            {formErrors.role && <span className="text-red-500 text-xs mt-1">{formErrors.role}</span>}
+          </div>
         </form>
         <div className="flex justify-end gap-3 mt-5">
-          <Button label="Save" onClick={saveEdit} disabled={editSaveDisabled} className="bg-gradient-to-r from-fuchsia-700 to-purple-700 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg" />
-          <Button label="Cancel" onClick={() => setShowEdit(false)} className="bg-gray-400 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg" />
+          <Button 
+            label={saving ? "Saving..." : "Save"} 
+            onClick={updateUser} 
+            className="bg-gradient-to-r from-blue-600 to-purple-600 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg" 
+            disabled={saving}
+          />
+          <Button 
+            label="Cancel" 
+            onClick={() => setShowEdit(false)} 
+            className="bg-gray-400 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg" 
+          />
         </div>
       </Dialog>
     </div>
