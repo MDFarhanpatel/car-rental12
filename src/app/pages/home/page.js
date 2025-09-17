@@ -63,7 +63,7 @@ export default function DashboardHome() {
   // Loading skeleton
   if (loading) {
     return (
-      <div className="p-3 sm:p-4 md:p-6 min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
+      <div className="p-3 sm:p-4 md:p-6 min-h-screen bg-gradient-to-r from-gray-900 via-gray-500 to-gray-600 font-sans">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
           {[1, 2, 3, 4].map((item) => (
             <div key={item} className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg">
@@ -82,7 +82,7 @@ export default function DashboardHome() {
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
+    <div className="p-3 sm:p-4 md:p-6 min-h-screen  bg-gradient-to-r from-gray-900 via-gray-500 to-gray-600 font-sans">
       {/* Welcome message - responsive text size */}
       <div className="mb-6">
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
@@ -104,7 +104,7 @@ export default function DashboardHome() {
               border border-gray-200
               transition-all duration-300
               hover:shadow-2xl hover:scale-105
-              border-b-4 border-r-4 ${item.color.includes('blue') ? 'border-b-blue-500 border-r-blue-500' : 
+              border-b-4 border-r-4 ${item.color.includes('black') ? 'border-b-black border-r-black' : 
                                      item.color.includes('green') ? 'border-b-green-500 border-r-green-500' : 
                                      item.color.includes('purple') ? 'border-b-purple-500 border-r-purple-500' : 
                                      'border-b-yellow-500 border-r-yellow-500'}

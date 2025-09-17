@@ -8,9 +8,8 @@ import { Toast } from "primereact/toast";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Tag } from "primereact/tag";
+import { FloatLabel } from 'primereact/floatlabel';
 import { BreadCrumb } from "primereact/breadcrumb";
-import { IconField } from "primereact/iconfield";
-import { InputIcon } from "primereact/inputicon";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 
 const roles = [
@@ -31,14 +30,14 @@ export default function UsersPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
   const toast = useRef(null);
 
   // Pagination states
   const [first, setFirst] = useState(0);
   const [rows, setRows] = useState(10);
   const [totalRecords, setTotalRecords] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
 
   // Search states
   const [globalFilterValue, setGlobalFilterValue] = useState('');
@@ -69,6 +68,39 @@ export default function UsersPage() {
     { label: "Users" },
   ];
 
+  // Handle mobile detection
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Get current user from JWT token
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setCurrentUser(payload);
+      } catch (error) {
+        console.error('Error decoding token:', error);
+      }
+    }
+  }, []);
+
+  // Check if user is admin
+  const isAdmin = () => {
+    return currentUser?.role_id === 'ADMIN' || currentUser?.role === 'ADMIN';
+  };
+
+  // Clear form errors when forms change
+  useEffect(() => {
+    if (Object.keys(formErrors).length > 0) {
+      setFormErrors({});
+    }
+  }, [addForm, editForm]);
+
   // Fetch users
   const fetchUsers = async () => {
     try {
@@ -89,11 +121,15 @@ export default function UsersPage() {
       const data = await response.json();
       setUsers(data.users || []);
       setTotalRecords(data.totalCount || 0);
-      setCurrentPage(data.currentPage || 1);
-      setTotalPages(data.totalPages || 0);
     } catch (error) {
       console.error("Error fetching users:", error);
       setError(error.message);
+      toast.current?.show({
+        severity: "error",
+        summary: "Error",
+        detail: error.message || "Failed to load users",
+        life: 3000,
+      });
     } finally {
       setLoading(false);
     }
@@ -170,23 +206,25 @@ export default function UsersPage() {
   // Actions template
   const actionBodyTemplate = (rowData) => {
     return (
-      <div className="flex gap-2">
+      <div className="flex gap-2 justify-center">
         <Button
           icon="pi pi-pencil"
           rounded
           severity="secondary"
-          size="small"
+          className="p-button-sm w-6 h-6 sm:w-8 sm:h-8"
           onClick={() => openEditDialog(rowData)}
           tooltip="Edit"
         />
-        <Button
-          icon="pi pi-trash"
-          rounded
-          severity="danger"
-          size="small"
-          onClick={() => confirmDelete(rowData)}
-          tooltip="Delete"
-        />
+        {isAdmin() && (
+          <Button
+            icon="pi pi-trash"
+            rounded
+            severity="danger"
+            className="p-button-sm w-6 h-6 sm:w-8 sm:h-8"
+            onClick={() => confirmDelete(rowData)}
+            tooltip="Delete"
+          />
+        )}
       </div>
     );
   };
@@ -212,6 +250,7 @@ export default function UsersPage() {
       password: "",
       role: "",
     });
+    setFormErrors({});
     setShowAdd(true);
   };
 
@@ -224,6 +263,7 @@ export default function UsersPage() {
       role: user.role_id,
       password: "",
     });
+    setFormErrors({});
     setShowEdit(true);
   };
 
@@ -408,8 +448,8 @@ export default function UsersPage() {
         <div className="flex gap-2 items-center">
           {/* Search Input with proper styling */}
           <div className="relative">
-            <IconField iconPosition="left">
-              <InputIcon className="pi pi-search text-gray-400" />
+            <div className="relative">
+              <i className="pi pi-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
               <InputText
                 value={globalFilterValue}
                 onChange={onGlobalFilterChange}
@@ -430,7 +470,7 @@ export default function UsersPage() {
                   <i className="pi pi-times text-sm"></i>
                 </button>
               )}
-            </IconField>
+            </div>
           </div>
           
           <Button
@@ -446,7 +486,7 @@ export default function UsersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-r from-gray-900 via-gray-500 to-gray-600 font-sans flex items-center justify-center">
         <div className="text-white text-xl">Loading users...</div>
       </div>
     );
@@ -454,14 +494,14 @@ export default function UsersPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-r from-gray-900 via-gray-500 to-gray-600 font-sans flex items-center justify-center">
         <div className="text-red-400 text-xl">Error: {error}</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
+    <div className="min-h-screen bg-gradient-to-r from-gray-900 via-gray-500 to-gray-600 font-sans  ">
       <Toast ref={toast} />
       <ConfirmDialog />
       
@@ -479,17 +519,16 @@ export default function UsersPage() {
         {renderHeader()}
         
         {/* Users Table */}
-        <div className="bg-zinc-900 p-4 sm:p-6 rounded-2xl shadow-2xl overflow-x-auto">
+        <div className="rounded-lg shadow-lg bg-white p-4">
           <DataTable
             value={users}
             stripedRows
-            paginator={false}
+            paginator={true}
             rows={rows}
             loading={loading}
             className="p-datatable-sm text-white border-0"
             emptyMessage="No users found."
             first={first}
-            rows={rows}
             totalRecords={totalRecords}
             onPage={onPageChange}
             onSort={onSort}
@@ -497,6 +536,9 @@ export default function UsersPage() {
             sortOrder={sortOrder}
             globalFilter={globalFilterValue}
             globalFilterFields={["name", "username", "email", "role_id"]}
+            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
+            rowsPerPageOptions={[5, 10, 25, 50]}
           >
             <Column field="name" header="Name" sortable />
             <Column field="username" header="Username" sortable />
@@ -505,27 +547,6 @@ export default function UsersPage() {
             <Column field="is_active" header="Status" body={statusBodyTemplate} sortable />
             <Column header="Actions" body={actionBodyTemplate} />
           </DataTable>
-          
-          {/* Paginator */}
-          <div className="flex flex-wrap justify-between items-center mt-4 gap-4">
-            <div className="text-white text-sm">
-              Showing {first + 1} to {Math.min(first + rows, totalRecords)} of {totalRecords} entries
-            </div>
-            <div className="flex gap-2">
-              <Button 
-                icon="pi pi-chevron-left" 
-                className="p-button-text p-button-sm" 
-                onClick={() => setFirst(Math.max(0, first - rows))}
-                disabled={first === 0}
-              />
-              <Button 
-                icon="pi pi-chevron-right" 
-                className="p-button-text p-button-sm" 
-                onClick={() => setFirst(Math.min(totalRecords - rows, first + rows))}
-                disabled={first >= totalRecords - rows}
-              />
-            </div>
-          </div>
         </div>
       </div>
 
