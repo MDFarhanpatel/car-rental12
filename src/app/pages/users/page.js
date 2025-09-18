@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "primereact/button";
-import { Dialog } from "primereact/dialog";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Toast } from "primereact/toast";
@@ -11,6 +10,8 @@ import { Tag } from "primereact/tag";
 import { Paginator } from "primereact/paginator";
 import { BreadCrumb } from "primereact/breadcrumb";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { Sidebar } from "primereact/sidebar";
+import { FloatLabel } from "primereact/floatlabel";
 
 const roles = [
   { label: "User", value: "USER" },
@@ -46,7 +47,7 @@ export default function UsersPage() {
     },
   });
 
-  // Dialogs, form states
+  // Sidebars, form states
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -213,7 +214,7 @@ export default function UsersPage() {
         rounded
         severity="secondary"
         className="p-button-sm w-6 h-6 sm:w-8 sm:h-8"
-        onClick={() => openEditDialog(rowData)}
+        onClick={() => openEditSidebar(rowData)}
         tooltip="Edit"
       />
       {isAdmin() && (
@@ -240,7 +241,7 @@ export default function UsersPage() {
     });
   };
 
-  const openAddDialog = () => {
+  const openAddSidebar = () => {
     setAddForm({
       username: "",
       email: "",
@@ -252,7 +253,7 @@ export default function UsersPage() {
     setShowAdd(true);
   };
 
-  const openEditDialog = (user) => {
+  const openEditSidebar = (user) => {
     setSelectedUser(user);
     setEditForm({
       username: user.username,
@@ -412,7 +413,7 @@ export default function UsersPage() {
         <Button
           label="Add User"
           icon="pi pi-plus"
-          onClick={openAddDialog}
+          onClick={openAddSidebar}
           className="bg-gradient-to-r from-blue-600 to-purple-600 border-none font-bold px-4 py-2 text-sm rounded-lg hover:scale-105 transition-transform"
         />
       </div>
@@ -481,95 +482,102 @@ export default function UsersPage() {
         />
       </div>
 
-      {/* Add User Dialog */}
-      <Dialog
-        header="Add User"
+      {/* Add User Sidebar */}
+      <Sidebar
         visible={showAdd}
         position="right"
-        style={{ width: 400, maxWidth: "100vw" }}
-        modal
-        blockScroll
-        className="rounded-lg shadow-xl"
         onHide={() => setShowAdd(false)}
+        className="w-full md:w-30rem"
+        header="Add User"
       >
         <form className="flex flex-col gap-4 p-1">
           <div className="mt-4">
-            <label htmlFor="add-username" className="block text-sm text-gray-600 mb-1">
-              Username <span className="text-red-600">*</span>
-            </label>
-            <InputText
-              id="add-username"
-              name="username"
-              value={addForm.username}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
-                formErrors.username ? "border-red-500" : "border-gray-300"
-              }`}
-              onChange={(e) => setAddForm({ ...addForm, username: e.target.value })}
-            />
+            <FloatLabel>
+              <InputText
+                id="add-username"
+                name="username"
+                value={addForm.username}
+                className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                  formErrors.username ? "border-red-500" : "border-gray-300"
+                }`}
+                onChange={(e) => setAddForm({ ...addForm, username: e.target.value })}
+              />
+              <label htmlFor="add-username" className="text-sm text-gray-600">
+                Username <span className="text-red-600">*</span>
+              </label>
+            </FloatLabel>
             {formErrors.username && <span className="text-red-500 text-xs mt-1">{formErrors.username}</span>}
           </div>
           <div className="mt-2">
-            <label htmlFor="add-name" className="block text-sm text-gray-600 mb-1">
-              Full Name <span className="text-red-600">*</span>
-            </label>
-            <InputText
-              id="add-name"
-              name="name"
-              value={addForm.name}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
-                formErrors.name ? "border-red-500" : "border-gray-300"
-              }`}
-              onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
-            />
+            <FloatLabel>
+              <InputText
+                id="add-name"
+                name="name"
+                value={addForm.name}
+                className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                  formErrors.name ? "border-red-500" : "border-gray-300"
+                }`}
+                onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+              />
+              <label htmlFor="add-name" className="text-sm text-gray-600">
+                Full Name <span className="text-red-600">*</span>
+              </label>
+            </FloatLabel>
             {formErrors.name && <span className="text-red-500 text-xs mt-1">{formErrors.name}</span>}
           </div>
           <div className="mt-2">
-            <label htmlFor="add-email" className="block text-sm text-gray-600 mb-1">
-              Email <span className="text-red-600">*</span>
-            </label>
-            <InputText
-              id="add-email"
-              name="email"
-              type="email"
-              value={addForm.email}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
-                formErrors.email ? "border-red-500" : "border-gray-300"
-              }`}
-              onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
-            />
+            <FloatLabel>
+              <InputText
+                id="add-email"
+                name="email"
+                type="email"
+                value={addForm.email}
+                className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                  formErrors.email ? "border-red-500" : "border-gray-300"
+                }`}
+                onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+              />
+              <label htmlFor="add-email" className="text-sm text-gray-600">
+                Email <span className="text-red-600">*</span>
+              </label>
+            </FloatLabel>
             {formErrors.email && <span className="text-red-500 text-xs mt-1">{formErrors.email}</span>}
           </div>
           <div className="mt-2">
-            <label htmlFor="add-password" className="block text-sm text-gray-600 mb-1">
-              Password <span className="text-red-600">*</span>
-            </label>
-            <InputText
-              id="add-password"
-              name="password"
-              type="password"
-              value={addForm.password}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
-                formErrors.password ? "border-red-500" : "border-gray-300"
-              }`}
-              onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
-            />
+            <FloatLabel>
+              <InputText
+                id="add-password"
+                name="password"
+                type="password"
+                value={addForm.password}
+                className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                  formErrors.password ? "border-red-500" : "border-gray-300"
+                }`}
+                onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
+              />
+              <label htmlFor="add-password" className="text-sm text-gray-600">
+                Password <span className="text-red-600">*</span>
+              </label>
+            </FloatLabel>
             {formErrors.password && <span className="text-red-500 text-xs mt-1">{formErrors.password}</span>}
           </div>
           <div className="mt-2">
-            <label htmlFor="add-role" className="block text-sm text-gray-600 mb-1">
-              Role <span className="text-red-600">*</span>
-            </label>
-            <Dropdown
-              id="add-role"
-              name="role"
-              options={roles}
-              className={`w-full rounded-lg border ${
-                formErrors.role ? "border-red-500" : "border-gray-300"
-              }`}
-              value={addForm.role}
-              onChange={(e) => setAddForm({ ...addForm, role: e.value })}
-              panelClassName="z-50"
-            />
+            <FloatLabel>
+              <Dropdown
+                id="add-role"
+                name="role"
+                options={roles}
+                className={`w-full rounded-lg border ${
+                  formErrors.role ? "border-red-500" : "border-gray-300"
+                }`}
+                value={addForm.role}
+                onChange={(e) => setAddForm({ ...addForm, role: e.value })}
+                panelClassName="z-50"
+              />
+              <label htmlFor="add-role" className="text-sm text-gray-600">
+                Role <span className="text-red-600">*</span>
+              </label>
+            </FloatLabel>
             {formErrors.role && <span className="text-red-500 text-xs mt-1">{formErrors.role}</span>}
           </div>
         </form>
@@ -586,81 +594,86 @@ export default function UsersPage() {
             className="bg-gray-400 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
           />
         </div>
-      </Dialog>
+      </Sidebar>
 
-      {/* Edit User Dialog */}
-      <Dialog
-        header="Edit User"
+      {/* Edit User Sidebar */}
+      <Sidebar
         visible={showEdit}
         position="right"
-        style={{ width: 400, maxWidth: "100vw" }}
-        modal
-        blockScroll
-        className="rounded-lg shadow-xl"
         onHide={() => setShowEdit(false)}
+        className="w-full md:w-30rem"
+        header="Edit User"
       >
         <form className="flex flex-col gap-4 p-1">
           <div className="mt-4">
-            <label htmlFor="edit-username" className="block text-sm text-gray-600 mb-1">
-              Username <span className="text-red-600">*</span>
-            </label>
-            <InputText
-              id="edit-username"
-              name="username"
-              value={editForm.username}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
-                formErrors.username ? "border-red-500" : "border-gray-300"
-              }`}
-              onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
-            />
+            <FloatLabel>
+              <InputText
+                id="edit-username"
+                name="username"
+                value={editForm.username}
+                className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                  formErrors.username ? "border-red-500" : "border-gray-300"
+                }`}
+                onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+              />
+              <label htmlFor="edit-username" className="text-sm text-gray-600">
+                Username <span className="text-red-600">*</span>
+              </label>
+            </FloatLabel>
             {formErrors.username && <span className="text-red-500 text-xs mt-1">{formErrors.username}</span>}
           </div>
           <div className="mt-2">
-            <label htmlFor="edit-name" className="block text-sm text-gray-600 mb-1">
-              Full Name <span className="text-red-600">*</span>
-            </label>
-            <InputText
-              id="edit-name"
-              name="name"
-              value={editForm.name}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
-                formErrors.name ? "border-red-500" : "border-gray-300"
-              }`}
-              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-            />
+            <FloatLabel>
+              <InputText
+                id="edit-name"
+                name="name"
+                value={editForm.name}
+                className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                  formErrors.name ? "border-red-500" : "border-gray-300"
+                }`}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              />
+              <label htmlFor="edit-name" className="text-sm text-gray-600">
+                Full Name <span className="text-red-600">*</span>
+              </label>
+            </FloatLabel>
             {formErrors.name && <span className="text-red-500 text-xs mt-1">{formErrors.name}</span>}
           </div>
           <div className="mt-2">
-            <label htmlFor="edit-email" className="block text-sm text-gray-600 mb-1">
-              Email <span className="text-red-600">*</span>
-            </label>
-            <InputText
-              id="edit-email"
-              name="email"
-              type="email"
-              value={editForm.email}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
-                formErrors.email ? "border-red-500" : "border-gray-300"
-              }`}
-              onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-            />
+            <FloatLabel>
+              <InputText
+                id="edit-email"
+                name="email"
+                type="email"
+                value={editForm.email}
+                className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                  formErrors.email ? "border-red-500" : "border-gray-300"
+                }`}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+              />
+              <label htmlFor="edit-email" className="text-sm text-gray-600">
+                Email <span className="text-red-600">*</span>
+              </label>
+            </FloatLabel>
             {formErrors.email && <span className="text-red-500 text-xs mt-1">{formErrors.email}</span>}
           </div>
           <div className="mt-2">
-            <label htmlFor="edit-role" className="block text-sm text-gray-600 mb-1">
-              Role <span className="text-red-600">*</span>
-            </label>
-            <Dropdown
-              id="edit-role"
-              name="role"
-              options={roles}
-              className={`w-full rounded-lg border ${
-                formErrors.role ? "border-red-500" : "border-gray-300"
-              }`}
-              value={editForm.role}
-              onChange={(e) => setEditForm({ ...editForm, role: e.value })}
-              panelClassName="z-50"
-            />
+            <FloatLabel>
+              <Dropdown
+                id="edit-role"
+                name="role"
+                options={roles}
+                className={`w-full rounded-lg border ${
+                  formErrors.role ? "border-red-500" : "border-gray-300"
+                }`}
+                value={editForm.role}
+                onChange={(e) => setEditForm({ ...editForm, role: e.value })}
+                panelClassName="z-50"
+              />
+              <label htmlFor="edit-role" className="text-sm text-gray-600">
+                Role <span className="text-red-600">*</span>
+              </label>
+            </FloatLabel>
             {formErrors.role && <span className="text-red-500 text-xs mt-1">{formErrors.role}</span>}
           </div>
         </form>
@@ -677,7 +690,7 @@ export default function UsersPage() {
             className="bg-gray-400 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
           />
         </div>
-      </Dialog>
+      </Sidebar>
     </div>
   );
 }
