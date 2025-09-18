@@ -294,7 +294,7 @@ export default function ChecklistCategoriesPage() {
   }
 
   return (
-    <div className="p-2 sm:p-4 md:p-6 min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
+    <div className="p-2 sm:p-4 md:p-6 min-h-screen bg-gradient-to-r from-gray-900 via-gray-500 to-gray-600 font-sans">
       <Toast ref={toast} />
       
       {/* Breadcrumb - Hidden on very small screens */}
@@ -333,7 +333,7 @@ export default function ChecklistCategoriesPage() {
         />
       </div>
       
-      <div className="bg-zinc-900 p-4 sm:p-6 rounded-2xl shadow-2xl overflow-x-auto">
+      <div className="">
         <DataTable 
           value={categories} 
           stripedRows 

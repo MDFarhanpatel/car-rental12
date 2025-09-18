@@ -83,7 +83,7 @@ const Header = () => {
         {
           label: "Checklist Items",
           icon: "pi pi-fw pi-check-square",
-          command: () => router.push("/pages/checklistOption"),
+          command: () => router.push("/pages/ChecklistOption"),
         },
         {
           label: "Settings",

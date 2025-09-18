@@ -357,7 +357,7 @@ export default function SettingsPage() {
         <h2 className="text-3xl font-semibold mb-8 text-white">Settings Management</h2>
         <div className="bg-white rounded-lg shadow-lg p-6">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-semibold text-black-800">System Settings</h3>
+            <h3 className="text-xl font-semibold text-black">System Settings</h3>
             <Button
               label="Add Setting"
               icon="pi pi-plus"

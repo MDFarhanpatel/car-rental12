@@ -8,7 +8,7 @@ import { Toast } from "primereact/toast";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Tag } from "primereact/tag";
-import { FloatLabel } from 'primereact/floatlabel';
+import { Paginator } from "primereact/paginator";
 import { BreadCrumb } from "primereact/breadcrumb";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 
@@ -31,7 +31,6 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [saving, setSaving] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [isMobile, setIsMobile] = useState(false);
   const toast = useRef(null);
 
   // Pagination states
@@ -39,10 +38,17 @@ export default function UsersPage() {
   const [rows, setRows] = useState(10);
   const [totalRecords, setTotalRecords] = useState(0);
 
-  // Search states
-  const [globalFilterValue, setGlobalFilterValue] = useState('');
-  const [sortField, setSortField] = useState('createdAt');
+  // Sorting states
+  const [sortField, setSortField] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState(-1);
+
+  // Filters state for inline column filtering
+  const [filters, setFilters] = useState({
+    name: { value: null, matchMode: "contains" },
+    username: { value: null, matchMode: "contains" },
+    email: { value: null, matchMode: "contains" },
+    role_id: { value: null, matchMode: "contains" },
+  });
 
   const [addForm, setAddForm] = useState({
     username: "",
@@ -63,70 +69,59 @@ export default function UsersPage() {
   const [formErrors, setFormErrors] = useState({});
 
   const breadcrumbItems = [
-    { label: "Home", command: () => window.location.href = "/" },
-    { label: "Admin", command: () => window.location.href = "/admin" },
+    { label: "Home", command: () => (window.location.href = "/") },
+    { label: "Admin", command: () => (window.location.href = "/admin") },
     { label: "Users" },
   ];
 
-  // Handle mobile detection
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 640);
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
   // Get current user from JWT token
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
       try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
+        const payload = JSON.parse(atob(token.split(".")[1]));
         setCurrentUser(payload);
       } catch (error) {
-        console.error('Error decoding token:', error);
+        console.error("Error decoding token:", error);
       }
     }
   }, []);
 
-  // Check if user is admin
   const isAdmin = () => {
-    return currentUser?.role_id === 'ADMIN' || currentUser?.role === 'ADMIN';
+    return currentUser?.role_id === "ADMIN" || currentUser?.role === "ADMIN";
   };
 
-  // Clear form errors when forms change
   useEffect(() => {
     if (Object.keys(formErrors).length > 0) {
       setFormErrors({});
     }
   }, [addForm, editForm]);
 
-  // Fetch users - FIXED PAGINATION
+  // Fetch users data
   const fetchUsers = async () => {
     try {
       setLoading(true);
       setError(null);
-      
       const skip = first;
       const limit = rows;
-      const search = globalFilterValue;
-      
-      const url = `/api/v1/users?skip=${skip}&limit=${limit}&sortField=${sortField}&sortOrder=${sortOrder}&search=${encodeURIComponent(search)}`;
-      console.log('Fetching URL:', url); // Debug log
-      
+      const sortF = sortField;
+      const sortO = sortOrder;
+      const filterParams = {};
+      for (const key of Object.keys(filters)) {
+        if (filters[key]?.value) {
+          filterParams[key] = filters[key].value;
+        }
+      }
+      const search = encodeURIComponent(JSON.stringify(filterParams));
+      const url = `/api/v1/users?skip=${skip}&limit=${limit}&sortField=${sortF}&sortOrder=${sortO}&filters=${search}`;
       const response = await fetch(url);
-      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
       const data = await response.json();
-      console.log('API Response:', data); // Debug log
-      
       setUsers(data.users || []);
       setTotalRecords(data.totalCount || 0);
     } catch (error) {
-      console.error("Error fetching users:", error);
       setError(error.message);
       toast.current?.show({
         severity: "error",
@@ -139,124 +134,87 @@ export default function UsersPage() {
     }
   };
 
-  // FIXED: Fetch users when pagination or sorting changes
   useEffect(() => {
     fetchUsers();
-  }, [first, rows, sortField, sortOrder]);
+  }, [first, rows, sortField, sortOrder, filters]);
 
-  // FIXED: Handle search with debounce and reset pagination
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (first !== 0) {
-        setFirst(0); // Reset to first page when searching
-      } else {
-        fetchUsers(); // Only fetch if already on first page
-      }
-    }, 500);
-
-    return () => clearTimeout(timeoutId);
-  }, [globalFilterValue]);
-
-  // FIXED: Fetch when first changes (including when reset to 0 for search)
-  useEffect(() => {
-    fetchUsers();
-  }, [first]);
-
-  // FIXED: Handle pagination change
   const onPageChange = (event) => {
-    console.log('Page change event:', event); // Debug log
     setFirst(event.first);
     setRows(event.rows);
   };
 
-  // Handle sorting
   const onSort = (event) => {
     setSortField(event.sortField);
     setSortOrder(event.sortOrder);
-    setFirst(0); // Reset to first page when sorting
   };
 
-  // Global filter change
-  const onGlobalFilterChange = (e) => {
-    setGlobalFilterValue(e.target.value);
-  };
-
-  // Clear search
-  const clearSearch = () => {
-    setGlobalFilterValue('');
+  const onFilter = (e) => {
+    setFilters(e.filters);
   };
 
   // Status template
-  const statusBodyTemplate = (rowData) => {
-    return (
-      <Tag 
-        value={rowData.is_active ? "Active" : "Inactive"} 
-        severity={rowData.is_active ? "success" : "danger"}
-        className="text-xs"
-      />
-    );
-  };
+  const statusBodyTemplate = (rowData) => (
+    <Tag
+      value={rowData.is_active ? "Active" : "Inactive"}
+      severity={rowData.is_active ? "success" : "danger"}
+      className="text-xs"
+    />
+  );
 
   // Role template
   const roleBodyTemplate = (rowData) => {
     const getRoleSeverity = (role) => {
       switch (role) {
-        case 'ADMIN': return 'danger';
-        case 'USER': return 'info';
-        case 'Hoster': return 'warning';
-        case 'Driver': return 'success';
-        default: return 'secondary';
+        case "ADMIN": return "danger";
+        case "USER": return "info";
+        case "Hoster": return "warning";
+        case "Driver": return "success";
+        default: return "secondary";
       }
     };
-
     return (
-      <Tag 
-        value={rowData.role_id} 
+      <Tag
+        value={rowData.role_id}
         severity={getRoleSeverity(rowData.role_id)}
         className="text-xs"
       />
     );
   };
 
-  // Actions template
-  const actionBodyTemplate = (rowData) => {
-    return (
-      <div className="flex gap-2 justify-center">
+  const actionBodyTemplate = (rowData) => (
+    <div className="flex gap-2 justify-center">
+      <Button
+        icon="pi pi-pencil"
+        rounded
+        severity="secondary"
+        className="p-button-sm w-6 h-6 sm:w-8 sm:h-8"
+        onClick={() => openEditDialog(rowData)}
+        tooltip="Edit"
+      />
+      {isAdmin() && (
         <Button
-          icon="pi pi-pencil"
+          icon="pi pi-trash"
           rounded
-          severity="secondary"
+          severity="danger"
           className="p-button-sm w-6 h-6 sm:w-8 sm:h-8"
-          onClick={() => openEditDialog(rowData)}
-          tooltip="Edit"
+          onClick={() => confirmDelete(rowData)}
+          tooltip="Delete"
         />
-        {isAdmin() && (
-          <Button
-            icon="pi pi-trash"
-            rounded
-            severity="danger"
-            className="p-button-sm w-6 h-6 sm:w-8 sm:h-8"
-            onClick={() => confirmDelete(rowData)}
-            tooltip="Delete"
-          />
-        )}
-      </div>
-    );
-  };
+      )}
+    </div>
+  );
 
-  // Confirm delete
   const confirmDelete = (user) => {
     confirmDialog({
       message: `Are you sure you want to delete ${user.name}?`,
-      header: 'Confirm Deletion',
-      icon: 'pi pi-trash',
-      acceptClassName: 'p-button-danger',
+      header: "Confirm Deletion",
+      icon: "pi pi-trash",
+      acceptClassName: "p-button-danger",
       accept: () => deleteUser(user),
-      rejectClassName: 'p-button-secondary',
+      rejectClassName: "p-button-secondary",
     });
   };
 
-  // Open dialogs
   const openAddDialog = () => {
     setAddForm({
       username: "",
@@ -282,55 +240,31 @@ export default function UsersPage() {
     setShowEdit(true);
   };
 
-  // Validate form
   const validateForm = (form, isEdit = false) => {
     const errors = {};
-    
-    if (!form.username.trim()) {
-      errors.username = "Username is required";
-    }
-    
-    if (!form.name.trim()) {
-      errors.name = "Name is required";
-    }
-    
-    if (!form.email.trim()) {
-      errors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(form.email)) {
-      errors.email = "Email is invalid";
-    }
-    
-    if (!isEdit && !form.password.trim()) {
-      errors.password = "Password is required";
-    }
-    
-    if (!form.role) {
-      errors.role = "Role is required";
-    }
-    
+    if (!form.username.trim()) errors.username = "Username is required";
+    if (!form.name.trim()) errors.name = "Name is required";
+    if (!form.email.trim()) errors.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(form.email)) errors.email = "Email is invalid";
+    if (!isEdit && !form.password.trim()) errors.password = "Password is required";
+    if (!form.role) errors.role = "Role is required";
     return errors;
   };
 
-  // Add user
   const addUser = async () => {
     const errors = validateForm(addForm);
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
     }
-    
     setSaving(true);
     try {
-      const response = await fetch('/api/v1/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await fetch("/api/v1/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(addForm),
       });
-
       const data = await response.json();
-
       if (response.ok) {
         toast.current?.show({
           severity: "success",
@@ -367,26 +301,20 @@ export default function UsersPage() {
     }
   };
 
-  // Update user
   const updateUser = async () => {
     const errors = validateForm(editForm, true);
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
     }
-    
     setSaving(true);
     try {
       const response = await fetch(`/api/v1/users/${selectedUser.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editForm),
       });
-
       const data = await response.json();
-
       if (response.ok) {
         toast.current?.show({
           severity: "success",
@@ -423,13 +351,11 @@ export default function UsersPage() {
     }
   };
 
-  // Delete user
   const deleteUser = async (user) => {
     try {
       const response = await fetch(`/api/v1/users/${user.id}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
-
       if (response.ok) {
         toast.current?.show({
           severity: "success",
@@ -439,7 +365,7 @@ export default function UsersPage() {
         });
         fetchUsers();
       } else {
-        throw new Error('Failed to delete user');
+        throw new Error("Failed to delete user");
       }
     } catch (error) {
       toast.current?.show({
@@ -451,53 +377,22 @@ export default function UsersPage() {
     }
   };
 
-  // Render header with search
-  const renderHeader = () => {
-    return (
-      <div className="flex flex-wrap gap-4 justify-between items-center mb-4">
-        <div className="flex items-center gap-2">
-          <h2 className="text-2xl font-bold text-white m-0">Users Management</h2>
-          <Tag value={`${totalRecords} Total`} severity="info" />
-        </div>
-        
-        <div className="flex gap-2 items-center">
-          {/* Search Input with proper styling */}
-          <div className="relative">
-            <div className="relative">
-              <i className="pi pi-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-              <InputText
-                value={globalFilterValue}
-                onChange={onGlobalFilterChange}
-                placeholder="Search users..."
-                className="pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-700 placeholder-gray-400"
-                style={{ 
-                  minWidth: '250px',
-                  paddingLeft: '2.5rem',
-                  paddingRight: '2.5rem'
-                }}
-              />
-              {globalFilterValue && (
-                <button
-                  onClick={clearSearch}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  type="button"
-                >
-                  <i className="pi pi-times text-sm"></i>
-                </button>
-              )}
-            </div>
-          </div>
-          
-          <Button
-            label="Add User"
-            icon="pi pi-plus"
-            onClick={openAddDialog}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 border-none font-bold px-4 py-2 text-sm rounded-lg hover:scale-105 transition-transform"
-          />
-        </div>
+  const renderHeader = () => (
+    <div className="flex flex-wrap gap-4 justify-between items-center mb-4">
+      <div className="flex items-center gap-2">
+        <h2 className="text-2xl font-bold text-white m-0">Users Management</h2>
+        <Tag value={`${totalRecords} Total`} severity="info" />
       </div>
-    );
-  };
+      <div className="flex gap-2 items-center">
+        <Button
+          label="Add User"
+          icon="pi pi-plus"
+          onClick={openAddDialog}
+          className="bg-gradient-to-r from-blue-600 to-purple-600 border-none font-bold px-4 py-2 text-sm rounded-lg hover:scale-105 transition-transform"
+        />
+      </div>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -516,55 +411,53 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-gray-900 via-gray-500 to-gray-600 font-sans  ">
+    <div className="min-h-screen bg-gradient-to-r from-gray-900 via-gray-500 to-gray-600 font-sans">
       <Toast ref={toast} />
       <ConfirmDialog />
-      
       <div className="p-6">
-        {/* Breadcrumb */}
         <div className="mb-6">
-          <BreadCrumb 
-            model={breadcrumbItems} 
-            home={{ icon: "pi pi-home", command: () => window.location.href = "/" }} 
+          <BreadCrumb
+            model={breadcrumbItems}
+            home={{ icon: "pi pi-home", command: () => (window.location.href = "/") }}
             className="text-white font-bold"
           />
         </div>
-        
-        {/* Header with search */}
         {renderHeader()}
-        
-        {/* Users Table */}
         <div className="rounded-lg shadow-lg bg-white p-4">
           <DataTable
             value={users}
             stripedRows
-            paginator={true}
-            rows={rows}
             loading={loading}
-            className="p-datatable-sm text-white border-0"
+            className="p-datatable-sm border-0"
             emptyMessage="No users found."
-            first={first}
-            totalRecords={totalRecords}
-            onPage={onPageChange}
-            onSort={onSort}
             sortField={sortField}
             sortOrder={sortOrder}
-            globalFilter={globalFilterValue}
-            globalFilterFields={["name", "username", "email", "role_id"]}
-            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
-            rowsPerPageOptions={[5, 10, 25, 50]}
+            filters={filters}
+            filterDisplay="row"
+            onFilter={onFilter}
+            onSort={onSort}
+            dataKey="id"
+            responsiveLayout="scroll"
           >
-            <Column field="name" header="Name" sortable />
-            <Column field="username" header="Username" sortable />
-            <Column field="email" header="Email" sortable />
-            <Column field="role_id" header="Role" body={roleBodyTemplate} sortable />
+            <Column field="name" header="Name" filter filterPlaceholder="Search by name" sortable />
+            <Column field="username" header="Username" filter filterPlaceholder="Search by username" sortable />
+            <Column field="email" header="Email" filter filterPlaceholder="Search by email" sortable />
+            <Column field="role_id" header="Role" body={roleBodyTemplate} filter filterPlaceholder="Search by role" sortable />
             <Column field="is_active" header="Status" body={statusBodyTemplate} sortable />
             <Column header="Actions" body={actionBodyTemplate} />
           </DataTable>
+          {/* PrimeReact Basic Paginator below the table */}
+          <Paginator
+            first={first}
+            rows={rows}
+            totalRecords={totalRecords}
+            rowsPerPageOptions={[5, 10, 25, 50]}
+            onPageChange={onPageChange}
+            template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
+          />
         </div>
       </div>
-
       {/* Add User Dialog */}
       <Dialog
         header="Add User"
@@ -578,94 +471,89 @@ export default function UsersPage() {
       >
         <form className="flex flex-col gap-4 p-1">
           <div className="mt-4">
-            <label htmlFor="add-username" className="block text-sm text-gray-600 mb-1">Username <span className="text-red-600">*</span></label>
+            <label htmlFor="add-username" className="block text-sm text-gray-600 mb-1">
+              Username <span className="text-red-600">*</span>
+            </label>
             <InputText
               id="add-username"
               name="username"
               value={addForm.username}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
-                formErrors.username ? 'border-red-500' : 'border-gray-300'
-              }`}
-              onChange={(e) => setAddForm({...addForm, username: e.target.value})}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${formErrors.username ? "border-red-500" : "border-gray-300"}`}
+              onChange={(e) => setAddForm({ ...addForm, username: e.target.value })}
             />
             {formErrors.username && <span className="text-red-500 text-xs mt-1">{formErrors.username}</span>}
           </div>
-
           <div className="mt-2">
-            <label htmlFor="add-name" className="block text-sm text-gray-600 mb-1">Full Name <span className="text-red-600">*</span></label>
+            <label htmlFor="add-name" className="block text-sm text-gray-600 mb-1">
+              Full Name <span className="text-red-600">*</span>
+            </label>
             <InputText
               id="add-name"
               name="name"
               value={addForm.name}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
-                formErrors.name ? 'border-red-500' : 'border-gray-300'
-              }`}
-              onChange={(e) => setAddForm({...addForm, name: e.target.value})}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${formErrors.name ? "border-red-500" : "border-gray-300"}`}
+              onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
             />
             {formErrors.name && <span className="text-red-500 text-xs mt-1">{formErrors.name}</span>}
           </div>
-
           <div className="mt-2">
-            <label htmlFor="add-email" className="block text-sm text-gray-600 mb-1">Email <span className="text-red-600">*</span></label>
+            <label htmlFor="add-email" className="block text-sm text-gray-600 mb-1">
+              Email <span className="text-red-600">*</span>
+            </label>
             <InputText
               id="add-email"
               name="email"
               type="email"
               value={addForm.email}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
-                formErrors.email ? 'border-red-500' : 'border-gray-300'
-              }`}
-              onChange={(e) => setAddForm({...addForm, email: e.target.value})}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${formErrors.email ? "border-red-500" : "border-gray-300"}`}
+              onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
             />
             {formErrors.email && <span className="text-red-500 text-xs mt-1">{formErrors.email}</span>}
           </div>
-
           <div className="mt-2">
-            <label htmlFor="add-password" className="block text-sm text-gray-600 mb-1">Password <span className="text-red-600">*</span></label>
+            <label htmlFor="add-password" className="block text-sm text-gray-600 mb-1">
+              Password <span className="text-red-600">*</span>
+            </label>
             <InputText
               id="add-password"
               name="password"
               type="password"
               value={addForm.password}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
-                formErrors.password ? 'border-red-500' : 'border-gray-300'
-              }`}
-              onChange={(e) => setAddForm({...addForm, password: e.target.value})}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${formErrors.password ? "border-red-500" : "border-gray-300"}`}
+              onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
             />
             {formErrors.password && <span className="text-red-500 text-xs mt-1">{formErrors.password}</span>}
           </div>
-
           <div className="mt-2">
-            <label htmlFor="add-role" className="block text-sm text-gray-600 mb-1">Role <span className="text-red-600">*</span></label>
+            <label htmlFor="add-role" className="block text-sm text-gray-600 mb-1">
+              Role <span className="text-red-600">*</span>
+            </label>
             <Dropdown
               id="add-role"
               name="role"
               options={roles}
-              className={`w-full rounded-lg border ${
-                formErrors.role ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className={`w-full rounded-lg border ${formErrors.role ? "border-red-500" : "border-gray-300"}`}
               value={addForm.role}
-              onChange={(e) => setAddForm({...addForm, role: e.value})}
+              onChange={(e) => setAddForm({ ...addForm, role: e.value })}
               panelClassName="z-50"
             />
             {formErrors.role && <span className="text-red-500 text-xs mt-1">{formErrors.role}</span>}
           </div>
         </form>
         <div className="flex justify-end gap-3 mt-5">
-          <Button 
-            label={saving ? "Saving..." : "Save"} 
-            onClick={addUser} 
-            className="bg-gradient-to-r from-blue-600 to-purple-600 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg" 
+          <Button
+            label={saving ? "Saving..." : "Save"}
+            onClick={addUser}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
             disabled={saving}
           />
-          <Button 
-            label="Cancel" 
-            onClick={() => setShowAdd(false)} 
-            className="bg-gray-400 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg" 
+          <Button
+            label="Cancel"
+            onClick={() => setShowAdd(false)}
+            className="bg-gray-400 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
           />
         </div>
       </Dialog>
-
       {/* Edit User Dialog */}
       <Dialog
         header="Edit User"
@@ -679,75 +567,72 @@ export default function UsersPage() {
       >
         <form className="flex flex-col gap-4 p-1">
           <div className="mt-4">
-            <label htmlFor="edit-username" className="block text-sm text-gray-600 mb-1">Username <span className="text-red-600">*</span></label>
+            <label htmlFor="edit-username" className="block text-sm text-gray-600 mb-1">
+              Username <span className="text-red-600">*</span>
+            </label>
             <InputText
               id="edit-username"
               name="username"
               value={editForm.username}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
-                formErrors.username ? 'border-red-500' : 'border-gray-300'
-              }`}
-              onChange={(e) => setEditForm({...editForm, username: e.target.value})}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${formErrors.username ? "border-red-500" : "border-gray-300"}`}
+              onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
             />
             {formErrors.username && <span className="text-red-500 text-xs mt-1">{formErrors.username}</span>}
           </div>
-
           <div className="mt-2">
-            <label htmlFor="edit-name" className="block text-sm text-gray-600 mb-1">Full Name <span className="text-red-600">*</span></label>
+            <label htmlFor="edit-name" className="block text-sm text-gray-600 mb-1">
+              Full Name <span className="text-red-600">*</span>
+            </label>
             <InputText
               id="edit-name"
               name="name"
               value={editForm.name}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
-                formErrors.name ? 'border-red-500' : 'border-gray-300'
-              }`}
-              onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${formErrors.name ? "border-red-500" : "border-gray-300"}`}
+              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
             />
             {formErrors.name && <span className="text-red-500 text-xs mt-1">{formErrors.name}</span>}
           </div>
-
           <div className="mt-2">
-            <label htmlFor="edit-email" className="block text-sm text-gray-600 mb-1">Email <span className="text-red-600">*</span></label>
+            <label htmlFor="edit-email" className="block text-sm text-gray-600 mb-1">
+              Email <span className="text-red-600">*</span>
+            </label>
             <InputText
               id="edit-email"
               name="email"
               type="email"
               value={editForm.email}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
-                formErrors.email ? 'border-red-500' : 'border-gray-300'
-              }`}
-              onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${formErrors.email ? "border-red-500" : "border-gray-300"}`}
+              onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
             />
             {formErrors.email && <span className="text-red-500 text-xs mt-1">{formErrors.email}</span>}
           </div>
-
           <div className="mt-2">
-            <label htmlFor="edit-role" className="block text-sm text-gray-600 mb-1">Role <span className="text-red-600">*</span></label>
+            <label htmlFor="edit-role" className="block text-sm text-gray-600 mb-1">
+              Role <span className="text-red-600">*</span>
+            </label>
             <Dropdown
               id="edit-role"
               name="role"
               options={roles}
-              className={`w-full rounded-lg border ${
-                formErrors.role ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className={`w-full rounded-lg border ${formErrors.role ? "border-red-500" : "border-gray-300"}`}
               value={editForm.role}
-              onChange={(e) => setEditForm({...editForm, role: e.value})}
+              onChange={(e) => setEditForm({ ...editForm, role: e.value })}
               panelClassName="z-50"
             />
             {formErrors.role && <span className="text-red-500 text-xs mt-1">{formErrors.role}</span>}
           </div>
         </form>
         <div className="flex justify-end gap-3 mt-5">
-          <Button 
-            label={saving ? "Saving..." : "Save"} 
-            onClick={updateUser} 
-            className="bg-gradient-to-r from-blue-600 to-purple-600 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg" 
+          <Button
+            label={saving ? "Saving..." : "Save"}
+            onClick={updateUser}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
             disabled={saving}
           />
-          <Button 
-            label="Cancel" 
-            onClick={() => setShowEdit(false)} 
-            className="bg-gray-400 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg" 
+          <Button
+            label="Cancel"
+            onClick={() => setShowEdit(false)}
+            className="bg-gray-400 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
           />
         </div>
       </Dialog>
