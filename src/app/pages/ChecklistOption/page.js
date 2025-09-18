@@ -444,7 +444,7 @@ export default function ChecklistItemsPage() {
   };
 
   return (
-    <div className="p-4 min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
+    <div className="p-4 min-h-screen bg-gradient-to-r from-gray-900 via-gray-500 to-gray-600 font-sans">
       <Toast ref={toast} />
       
       {/* Header */}

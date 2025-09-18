@@ -236,7 +236,7 @@ export default function VariantsPage() {
   const inactiveVariants = variants.filter(v => !v.active).length;
 
   return (
-    <div className="p-4 min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
+    <div className="p-4 min-h-screen bg-gradient-to-r from-gray-900 via-gray-500 to-gray-600 font-sans">
       <Toast ref={toast} />
       <div className="mb-4">
         <BreadCrumb 

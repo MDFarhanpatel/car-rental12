@@ -101,7 +101,7 @@ export default function UsersPage() {
     }
   }, [addForm, editForm]);
 
-  // Fetch users
+  // Fetch users - FIXED PAGINATION
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -112,6 +112,8 @@ export default function UsersPage() {
       const search = globalFilterValue;
       
       const url = `/api/v1/users?skip=${skip}&limit=${limit}&sortField=${sortField}&sortOrder=${sortOrder}&search=${encodeURIComponent(search)}`;
+      console.log('Fetching URL:', url); // Debug log
+      
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -119,6 +121,8 @@ export default function UsersPage() {
       }
       
       const data = await response.json();
+      console.log('API Response:', data); // Debug log
+      
       setUsers(data.users || []);
       setTotalRecords(data.totalCount || 0);
     } catch (error) {
@@ -135,22 +139,32 @@ export default function UsersPage() {
     }
   };
 
+  // FIXED: Fetch users when pagination or sorting changes
   useEffect(() => {
     fetchUsers();
   }, [first, rows, sortField, sortOrder]);
 
-  // Handle search with debounce
+  // FIXED: Handle search with debounce and reset pagination
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      setFirst(0); // Reset to first page when searching
-      fetchUsers();
+      if (first !== 0) {
+        setFirst(0); // Reset to first page when searching
+      } else {
+        fetchUsers(); // Only fetch if already on first page
+      }
     }, 500);
 
     return () => clearTimeout(timeoutId);
   }, [globalFilterValue]);
 
-  // Handle pagination
+  // FIXED: Fetch when first changes (including when reset to 0 for search)
+  useEffect(() => {
+    fetchUsers();
+  }, [first]);
+
+  // FIXED: Handle pagination change
   const onPageChange = (event) => {
+    console.log('Page change event:', event); // Debug log
     setFirst(event.first);
     setRows(event.rows);
   };
@@ -159,6 +173,7 @@ export default function UsersPage() {
   const onSort = (event) => {
     setSortField(event.sortField);
     setSortOrder(event.sortOrder);
+    setFirst(0); // Reset to first page when sorting
   };
 
   // Global filter change

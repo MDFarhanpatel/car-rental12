@@ -64,7 +64,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-gray-950 via-gray-900 to-fuchsia-900 font-sans px-4 py-6 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-gray-900 via-gray-500 to-gray-600 font-sans px-4 py-6 sm:px-6 lg:px-8">
       <div className="bg-white/90 backdrop-blur-lg p-6 sm:p-8 md:p-10 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-sm sm:max-w-md flex flex-col gap-6 sm:gap-8 border-2 border-cyan-300">
         <div className="flex flex-col items-center">
           <img
@@ -128,7 +128,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={isLoading}
-            className={`bg-gradient-to-r from-gray-950 via-gray-900 to-fuchsia-900 text-white py-2 sm:py-3 rounded-xl font-bold shadow-lg hover:scale-105 transition-transform text-sm sm:text-base ${
+            className={`bg-gradient-to-r from-gray-950 via-gray-900 to-gray-400 text-white py-2 sm:py-3 rounded-xl font-bold shadow-lg hover:scale-105 transition-transform text-sm sm:text-base ${
               isLoading ? "opacity-70 cursor-not-allowed" : ""
             }`}
           >

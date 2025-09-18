@@ -63,7 +63,7 @@ const Header = () => {
         {
           label: "Variants",
           icon: "pi pi-fw pi-car",
-          command: () => router.push("/pages/varients"),
+          command: () => router.push("/pages/variants"),
         },
         {
           label: "States",
@@ -78,17 +78,17 @@ const Header = () => {
         {
           label: "Checklist Category",
           icon: "pi pi-fw pi-check-square",
-          command: () => router.push("/pages/checklistcategories"),
+          command: () => router.push("/pages/ChecklistCatogary"),
         },
         {
           label: "Checklist Items",
           icon: "pi pi-fw pi-check-square",
-          command: () => router.push("/pages/checklistitems"),
+          command: () => router.push("/pages/checklistOption"),
         },
         {
           label: "Settings",
           icon: "pi pi-fw pi-cog",
-          command: () => router.push("/pages/settings"),
+          command: () => router.push("/pages/Settings"),
         },
       ],
     },
@@ -99,7 +99,7 @@ const Header = () => {
         {
           label: "Pending Vehicles",
           icon: "pi pi-fw pi-clock",
-          command: () => router.push("/pages/inventory/addcars"),
+          command: () => router.push("/pages/inventory/pending"),
         },
         {
           label: "Available Vehicles",
@@ -126,7 +126,7 @@ const Header = () => {
     {
       label: "Hosters",
       icon: "pi pi-fw pi-users",
-      command: () => router.push("/pages/hoster"),
+      command: () => router.push("/pages/hosters"),
     },
     {
       label: "Customers",

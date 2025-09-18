@@ -350,7 +350,7 @@ export default function SettingsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
+    <div className="min-h-screen bg-gradient-to-r from-gray-900 via-gray-500 to-gray-600 font-sans">
       <Toast ref={toast} />
       <div className="p-7">
         <BreadCrumb model={breadcrumbItems} home={breadcrumbHome} className="mb-6" />

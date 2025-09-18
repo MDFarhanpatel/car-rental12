@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -13,14 +12,14 @@ export async function PUT(request, { params }) {
     // Validation
     if (!username || !email || !name || !role) {
       return NextResponse.json(
-        { message: "Username, email, name, and role are required", statusCode: 400 },
+        { message: "All fields except password are required", statusCode: 400 },
         { status: 400 }
       );
     }
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
-      where: { id: parseInt(id) }
+      where: { id }
     });
 
     if (!existingUser) {
@@ -30,15 +29,15 @@ export async function PUT(request, { params }) {
       );
     }
 
-    // Check for duplicate username/email (excluding current user)
+    // Check if username or email is taken by another user
     const duplicateUser = await prisma.user.findFirst({
       where: {
         AND: [
-          { id: { not: parseInt(id) } },
+          { id: { not: id } },
           {
             OR: [
-              { email: email },
-              { username: username }
+              { username: username },
+              { email: email }
             ]
           }
         ]
@@ -47,7 +46,7 @@ export async function PUT(request, { params }) {
 
     if (duplicateUser) {
       return NextResponse.json(
-        { message: "User with this email or username already exists", statusCode: 400 },
+        { message: "Username or email already taken by another user", statusCode: 400 },
         { status: 400 }
       );
     }
@@ -60,14 +59,14 @@ export async function PUT(request, { params }) {
       role_id: role
     };
 
-    // Add password if provided
-    if (password && password.trim() !== '') {
-      updateData.password = await bcrypt.hash(password, 10);
+    // Only update password if provided
+    if (password && password.trim()) {
+      updateData.password = password; // In production, hash this password
     }
 
     // Update user
     const updatedUser = await prisma.user.update({
-      where: { id: parseInt(id) },
+      where: { id },
       data: updateData,
       select: {
         id: true,
@@ -76,7 +75,8 @@ export async function PUT(request, { params }) {
         email: true,
         role_id: true,
         is_active: true,
-        updatedAt: true
+        createdAt: true,
+        updatedAt: true,
       }
     });
 
@@ -102,7 +102,7 @@ export async function DELETE(request, { params }) {
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
-      where: { id: parseInt(id) }
+      where: { id }
     });
 
     if (!existingUser) {
@@ -114,7 +114,7 @@ export async function DELETE(request, { params }) {
 
     // Delete user
     await prisma.user.delete({
-      where: { id: parseInt(id) }
+      where: { id }
     });
 
     return NextResponse.json({

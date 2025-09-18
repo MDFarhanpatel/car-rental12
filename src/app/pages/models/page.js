@@ -279,7 +279,7 @@ export default function ModelsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-gray-900 via-purple-900 to-purple-800 font-sans">
+    <div className="min-h-screen bg-gradient-to-r from-gray-900 via-gray-500 to-gray-600 font-sans">
       <Toast ref={toast} />
       <div className="p-2 sm:p-4 lg:p-6">
         <div className="hidden sm:block mb-4">
