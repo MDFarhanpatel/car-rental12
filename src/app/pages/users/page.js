@@ -23,32 +23,34 @@ const roles = [
 ];
 
 export default function UsersPage() {
+  const toast = useRef(null);
+
+  // Data and loading states
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [loading, setLoading] = useState(false); // For DataTable loading spinner
+  const [pageLoading, setPageLoading] = useState(true); // For initial full page loading
   const [error, setError] = useState(null);
+
+  // Pagination, sorting, filters state for lazy loading
+  const [lazyState, setLazyState] = useState({
+    first: 0,
+    rows: 10,
+    sortField: "createdAt",
+    sortOrder: -1,
+    filters: {
+      name: { value: null, matchMode: "contains" },
+      username: { value: null, matchMode: "contains" },
+      email: { value: null, matchMode: "contains" },
+      role_id: { value: null, matchMode: "contains" },
+    },
+  });
+
+  // Dialogs, form states
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
-  const toast = useRef(null);
-
-  // Pagination states
-  const [first, setFirst] = useState(0);
-  const [rows, setRows] = useState(10);
-  const [totalRecords, setTotalRecords] = useState(0);
-
-  // Sorting states
-  const [sortField, setSortField] = useState("createdAt");
-  const [sortOrder, setSortOrder] = useState(-1);
-
-  // Filters state for inline column filtering
-  const [filters, setFilters] = useState({
-    name: { value: null, matchMode: "contains" },
-    username: { value: null, matchMode: "contains" },
-    email: { value: null, matchMode: "contains" },
-    role_id: { value: null, matchMode: "contains" },
-  });
 
   const [addForm, setAddForm] = useState({
     username: "",
@@ -68,13 +70,14 @@ export default function UsersPage() {
 
   const [formErrors, setFormErrors] = useState({});
 
+  const [currentUser, setCurrentUser] = useState(null);
+
   const breadcrumbItems = [
     { label: "Home", command: () => (window.location.href = "/") },
     { label: "Admin", command: () => (window.location.href = "/admin") },
     { label: "Users" },
   ];
 
-  // Get current user from JWT token
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -87,9 +90,8 @@ export default function UsersPage() {
     }
   }, []);
 
-  const isAdmin = () => {
-    return currentUser?.role_id === "ADMIN" || currentUser?.role === "ADMIN";
-  };
+  const isAdmin = () =>
+    currentUser?.role_id === "ADMIN" || currentUser?.role === "ADMIN";
 
   useEffect(() => {
     if (Object.keys(formErrors).length > 0) {
@@ -97,27 +99,26 @@ export default function UsersPage() {
     }
   }, [addForm, editForm]);
 
-  // Fetch users data
-  const fetchUsers = async () => {
+  const fetchUsers = async (state = lazyState, showSpinner = true) => {
     try {
-      setLoading(true);
+      if (showSpinner) setPageLoading(true);
+      else setLoading(true);
       setError(null);
-      const skip = first;
-      const limit = rows;
-      const sortF = sortField;
-      const sortO = sortOrder;
+
+      const { first, rows, sortField, sortOrder, filters } = state;
+
       const filterParams = {};
-      for (const key of Object.keys(filters)) {
-        if (filters[key]?.value) {
-          filterParams[key] = filters[key].value;
-        }
-      }
-      const search = encodeURIComponent(JSON.stringify(filterParams));
-      const url = `/api/v1/users?skip=${skip}&limit=${limit}&sortField=${sortF}&sortOrder=${sortO}&filters=${search}`;
+      Object.keys(filters).forEach((k) => {
+        if (filters[k]?.value) filterParams[k] = filters[k].value;
+      });
+      const filtersEncoded = encodeURIComponent(JSON.stringify(filterParams));
+
+      const url = `/api/v1/users?skip=${first}&limit=${rows}&sortField=${sortField}&sortOrder=${sortOrder}&filters=${filtersEncoded}`;
+
       const response = await fetch(url);
-      if (!response.ok) {
+      if (!response.ok)
         throw new Error(`HTTP error! status: ${response.status}`);
-      }
+
       const data = await response.json();
       setUsers(data.users || []);
       setTotalRecords(data.totalCount || 0);
@@ -131,28 +132,48 @@ export default function UsersPage() {
       });
     } finally {
       setLoading(false);
+      setPageLoading(false);
     }
   };
 
+  // Initial load
   useEffect(() => {
-    fetchUsers();
-  }, [first, rows, sortField, sortOrder, filters]);
+    fetchUsers(lazyState, true);
+  }, []);
 
+  // Fetch on lazyState changes except initial load
+  useEffect(() => {
+    if (!pageLoading) {
+      fetchUsers(lazyState, false);
+    }
+  }, [lazyState]);
+
+  // Handlers for paginator, sorting, and filter events
   const onPageChange = (event) => {
-    setFirst(event.first);
-    setRows(event.rows);
+    setLazyState((prev) => ({
+      ...prev,
+      first: event.first,
+      rows: event.rows,
+    }));
   };
 
   const onSort = (event) => {
-    setSortField(event.sortField);
-    setSortOrder(event.sortOrder);
+    setLazyState((prev) => ({
+      ...prev,
+      sortField: event.sortField,
+      sortOrder: event.sortOrder,
+      first: 0,
+    }));
   };
 
-  const onFilter = (e) => {
-    setFilters(e.filters);
+  const onFilter = (event) => {
+    setLazyState((prev) => ({
+      ...prev,
+      filters: event.filters,
+      first: 0,
+    }));
   };
 
-  // Status template
   const statusBodyTemplate = (rowData) => (
     <Tag
       value={rowData.is_active ? "Active" : "Inactive"}
@@ -161,15 +182,19 @@ export default function UsersPage() {
     />
   );
 
-  // Role template
   const roleBodyTemplate = (rowData) => {
     const getRoleSeverity = (role) => {
       switch (role) {
-        case "ADMIN": return "danger";
-        case "USER": return "info";
-        case "Hoster": return "warning";
-        case "Driver": return "success";
-        default: return "secondary";
+        case "ADMIN":
+          return "danger";
+        case "USER":
+          return "info";
+        case "Hoster":
+          return "warning";
+        case "Driver":
+          return "success";
+        default:
+          return "secondary";
       }
     };
     return (
@@ -280,7 +305,7 @@ export default function UsersPage() {
           password: "",
           role: "",
         });
-        fetchUsers();
+        fetchUsers(lazyState, false);
       } else {
         toast.current?.show({
           severity: "error",
@@ -330,7 +355,7 @@ export default function UsersPage() {
           role: "",
           password: "",
         });
-        fetchUsers();
+        fetchUsers(lazyState, false);
       } else {
         toast.current?.show({
           severity: "error",
@@ -363,7 +388,7 @@ export default function UsersPage() {
           detail: "User deleted successfully",
           life: 3000,
         });
-        fetchUsers();
+        fetchUsers(lazyState, false);
       } else {
         throw new Error("Failed to delete user");
       }
@@ -394,7 +419,7 @@ export default function UsersPage() {
     </div>
   );
 
-  if (loading) {
+  if (pageLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-r from-gray-900 via-gray-500 to-gray-600 font-sans flex items-center justify-center">
         <div className="text-white text-xl">Loading users...</div>
@@ -411,53 +436,51 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-gray-900 via-gray-500 to-gray-600 font-sans">
+    <div className="min-h-screen bg-gradient-to-r from-gray-900 via-gray-500 to-gray-600 font-sans p-6">
       <Toast ref={toast} />
       <ConfirmDialog />
-      <div className="p-6">
-        <div className="mb-6">
-          <BreadCrumb
-            model={breadcrumbItems}
-            home={{ icon: "pi pi-home", command: () => (window.location.href = "/") }}
-            className="text-white font-bold"
-          />
-        </div>
-        {renderHeader()}
-        <div className="rounded-lg shadow-lg bg-white p-4">
-          <DataTable
-            value={users}
-            stripedRows
-            loading={loading}
-            className="p-datatable-sm border-0"
-            emptyMessage="No users found."
-            sortField={sortField}
-            sortOrder={sortOrder}
-            filters={filters}
-            filterDisplay="row"
-            onFilter={onFilter}
-            onSort={onSort}
-            dataKey="id"
-            responsiveLayout="scroll"
-          >
-            <Column field="name" header="Name" filter filterPlaceholder="Search by name" sortable />
-            <Column field="username" header="Username" filter filterPlaceholder="Search by username" sortable />
-            <Column field="email" header="Email" filter filterPlaceholder="Search by email" sortable />
-            <Column field="role_id" header="Role" body={roleBodyTemplate} filter filterPlaceholder="Search by role" sortable />
-            <Column field="is_active" header="Status" body={statusBodyTemplate} sortable />
-            <Column header="Actions" body={actionBodyTemplate} />
-          </DataTable>
-          {/* PrimeReact Basic Paginator below the table */}
-          <Paginator
-            first={first}
-            rows={rows}
-            totalRecords={totalRecords}
-            rowsPerPageOptions={[5, 10, 25, 50]}
-            onPageChange={onPageChange}
-            template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
-            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
-          />
-        </div>
+      <BreadCrumb
+        model={breadcrumbItems}
+        home={{ icon: "pi pi-home", command: () => (window.location.href = "/") }}
+        className="mb-6 text-white font-bold"
+      />
+      {renderHeader()}
+      <div className="rounded-lg shadow-lg bg-white p-4">
+        <DataTable
+          value={users}
+          lazy
+          sortField={lazyState.sortField}
+          sortOrder={lazyState.sortOrder}
+          filters={lazyState.filters}
+          filterDisplay="row"
+          onFilter={onFilter}
+          onSort={onSort}
+          dataKey="id"
+          responsiveLayout="scroll"
+          loading={loading}
+          paginator={false}
+          stripedRows
+        >
+          <Column field="name" header="Name" filter filterPlaceholder="Search by name" sortable />
+          <Column field="username" header="Username" filter filterPlaceholder="Search by username" sortable />
+          <Column field="email" header="Email" filter filterPlaceholder="Search by email" sortable />
+          <Column field="role_id" header="Role" body={roleBodyTemplate} filter filterPlaceholder="Search by role" sortable />
+          <Column field="is_active" header="Status" body={statusBodyTemplate} sortable />
+          <Column header="Actions" body={actionBodyTemplate} />
+        </DataTable>
+
+        <Paginator
+          first={lazyState.first}
+          rows={lazyState.rows}
+          totalRecords={totalRecords}
+          rowsPerPageOptions={[5, 10, 25, 50]}
+          onPageChange={onPageChange}
+          template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+          currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
+          disabled={loading}
+        />
       </div>
+
       {/* Add User Dialog */}
       <Dialog
         header="Add User"
@@ -478,7 +501,9 @@ export default function UsersPage() {
               id="add-username"
               name="username"
               value={addForm.username}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${formErrors.username ? "border-red-500" : "border-gray-300"}`}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                formErrors.username ? "border-red-500" : "border-gray-300"
+              }`}
               onChange={(e) => setAddForm({ ...addForm, username: e.target.value })}
             />
             {formErrors.username && <span className="text-red-500 text-xs mt-1">{formErrors.username}</span>}
@@ -491,7 +516,9 @@ export default function UsersPage() {
               id="add-name"
               name="name"
               value={addForm.name}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${formErrors.name ? "border-red-500" : "border-gray-300"}`}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                formErrors.name ? "border-red-500" : "border-gray-300"
+              }`}
               onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
             />
             {formErrors.name && <span className="text-red-500 text-xs mt-1">{formErrors.name}</span>}
@@ -505,7 +532,9 @@ export default function UsersPage() {
               name="email"
               type="email"
               value={addForm.email}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${formErrors.email ? "border-red-500" : "border-gray-300"}`}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                formErrors.email ? "border-red-500" : "border-gray-300"
+              }`}
               onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
             />
             {formErrors.email && <span className="text-red-500 text-xs mt-1">{formErrors.email}</span>}
@@ -519,7 +548,9 @@ export default function UsersPage() {
               name="password"
               type="password"
               value={addForm.password}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${formErrors.password ? "border-red-500" : "border-gray-300"}`}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                formErrors.password ? "border-red-500" : "border-gray-300"
+              }`}
               onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
             />
             {formErrors.password && <span className="text-red-500 text-xs mt-1">{formErrors.password}</span>}
@@ -532,7 +563,9 @@ export default function UsersPage() {
               id="add-role"
               name="role"
               options={roles}
-              className={`w-full rounded-lg border ${formErrors.role ? "border-red-500" : "border-gray-300"}`}
+              className={`w-full rounded-lg border ${
+                formErrors.role ? "border-red-500" : "border-gray-300"
+              }`}
               value={addForm.role}
               onChange={(e) => setAddForm({ ...addForm, role: e.value })}
               panelClassName="z-50"
@@ -554,6 +587,7 @@ export default function UsersPage() {
           />
         </div>
       </Dialog>
+
       {/* Edit User Dialog */}
       <Dialog
         header="Edit User"
@@ -574,7 +608,9 @@ export default function UsersPage() {
               id="edit-username"
               name="username"
               value={editForm.username}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${formErrors.username ? "border-red-500" : "border-gray-300"}`}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                formErrors.username ? "border-red-500" : "border-gray-300"
+              }`}
               onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
             />
             {formErrors.username && <span className="text-red-500 text-xs mt-1">{formErrors.username}</span>}
@@ -587,7 +623,9 @@ export default function UsersPage() {
               id="edit-name"
               name="name"
               value={editForm.name}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${formErrors.name ? "border-red-500" : "border-gray-300"}`}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                formErrors.name ? "border-red-500" : "border-gray-300"
+              }`}
               onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
             />
             {formErrors.name && <span className="text-red-500 text-xs mt-1">{formErrors.name}</span>}
@@ -601,7 +639,9 @@ export default function UsersPage() {
               name="email"
               type="email"
               value={editForm.email}
-              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${formErrors.email ? "border-red-500" : "border-gray-300"}`}
+              className={`w-full p-3 text-sm sm:text-base rounded-lg border ${
+                formErrors.email ? "border-red-500" : "border-gray-300"
+              }`}
               onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
             />
             {formErrors.email && <span className="text-red-500 text-xs mt-1">{formErrors.email}</span>}
@@ -614,7 +654,9 @@ export default function UsersPage() {
               id="edit-role"
               name="role"
               options={roles}
-              className={`w-full rounded-lg border ${formErrors.role ? "border-red-500" : "border-gray-300"}`}
+              className={`w-full rounded-lg border ${
+                formErrors.role ? "border-red-500" : "border-gray-300"
+              }`}
               value={editForm.role}
               onChange={(e) => setEditForm({ ...editForm, role: e.value })}
               panelClassName="z-50"
