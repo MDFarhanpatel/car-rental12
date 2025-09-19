@@ -27,8 +27,6 @@
 //   is_active Boolean  @default(true)
 // }
 
-
-
 generator client {
   provider = "prisma-client-js"
   // output   = "../generated/prisma-client" 
@@ -50,15 +48,38 @@ enum role {
 }
 
 model user {
-  id        String  @id @default(auto()) @map("_id") @db.ObjectId
-  name      String
-  username  String  @unique
-  email     String? // Make it optional temporarily
-  password  String
-  role_id   role
-  is_active Boolean @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  name                String
+  username            String?  @unique
+  email               String   @unique
+  mobile              String
+  alternate_mobile    String?
+  password            String
+  address             String?
+  cityId              String?  @db.ObjectId
+  stateId             String?  @db.ObjectId
+  zipcode             String?
+  role_id             role
+  registration_status String   @default("pending") // pending, pending_approval, approved, rejected
+  is_active           Boolean  @default(false)
+  email_verified      Boolean  @default(false)
+  mobile_verified     Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model otp {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  mobile      String? // For mobile OTP
+  email       String? // For email OTP
+  otp         String
+  type        String // 'mobile' or 'email'
+  is_used     Boolean   @default(false)
+  expires_at  DateTime
+  created_at  DateTime  @default(now())
+  verified_at DateTime?
+
+  @@map("otps")
 }
 
 model Brand {
@@ -83,14 +104,14 @@ model Model {
 }
 
 model Variant {
-  id              String  @id @default(auto()) @map("_id") @db.ObjectId
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
   name            String
-  modelId         String  @db.ObjectId
-  model           Model   @relation(fields: [modelId], references: [id])
+  modelId         String   @db.ObjectId
+  model           Model    @relation(fields: [modelId], references: [id])
   fuelType        String?
   transmission    String?
   seatingCapacity Int?
-  active          Boolean @default(true)
+  active          Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
@@ -132,7 +153,7 @@ model ChecklistItem {
   categoryId  String            @db.ObjectId
   category    ChecklistCategory @relation(fields: [categoryId], references: [id])
   description String?
-  checkType   String?           // e.g., 'boolean', 'text', 'number'
+  checkType   String? // e.g., 'boolean', 'text', 'number'
   required    Boolean           @default(false)
   active      Boolean           @default(true)
   createdAt   DateTime          @default(now())
@@ -143,9 +164,9 @@ model Setting {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   key         String   @unique
   value       String
-  category    String   // e.g., 'general', 'email', 'payment'
+  category    String // e.g., 'general', 'email', 'payment'
   description String?
-  dataType    String?  // e.g., 'string', 'number', 'boolean'
+  dataType    String? // e.g., 'string', 'number', 'boolean'
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
