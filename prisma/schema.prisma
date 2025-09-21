@@ -30,14 +30,13 @@ enum registration_status {
 model user {
   id             String   @id @default(auto()) @map("_id") @db.ObjectId
   name           String
-  username       String?  @unique
-  email          String   @unique
-  mobile         String   @unique
-  password       String
-  role_id        role
+  email          String?  @unique // Optional email
+  mobile         String   @unique // Required mobile
+  password       String  // Hashed password for security
+  role           role     @default(USER)
   is_active      Boolean  @default(true)
-  email_verified Boolean  @default(false)
-  mobile_verified Boolean @default(false)
+  emailVerified  Boolean  @default(false)
+  mobileVerified Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
