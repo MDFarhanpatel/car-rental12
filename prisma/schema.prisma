@@ -1,31 +1,4 @@
-// generator client {
-//   provider = "prisma-client-js"
-//   output = "../generated/prisma-client"
-// }
 
-// datasource db {
-//   provider = "mongodb"
-//   url      = env("DB_URL")
-// }
-
-// enum role {
-//   USER
-//   ADMIN
-//   Hoster
-//   Driver
-//   provider
-//   customer
-//   mechanic
-
-// }
-// model user {
-//   id        String   @id @default(auto()) @map("_id") @db.ObjectId
-//   name      String
-//   username     String   @unique
-//   password  String
-//   role_id     role    
-//   is_active Boolean  @default(true)
-// }
 
 generator client {
   provider = "prisma-client-js"
@@ -47,25 +20,46 @@ enum role {
   mechanic
 }
 
+enum registration_status {
+  PENDING
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
 model user {
-  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  name           String
+  username       String?  @unique
+  email          String   @unique
+  mobile         String   @unique
+  password       String
+  role_id        role
+  is_active      Boolean  @default(true)
+  email_verified Boolean  @default(false)
+  mobile_verified Boolean @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Provider {
+  id                  String              @id @default(auto()) @map("_id") @db.ObjectId
+  registration_status registration_status @default(PENDING)
   name                String
-  username            String?  @unique
-  email               String   @unique
-  mobile              String
+  email               String              @unique
+  mobile              String              @unique
   alternate_mobile    String?
-  password            String
-  address             String?
-  cityId              String?  @db.ObjectId
-  stateId             String?  @db.ObjectId
-  zipcode             String?
-  role_id             role
-  registration_status String   @default("pending") // pending, pending_approval, approved, rejected
-  is_active           Boolean  @default(false)
-  email_verified      Boolean  @default(false)
-  mobile_verified     Boolean  @default(false)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  address             String
+  cityId              String              @db.ObjectId
+  city                City                @relation(fields: [cityId], references: [id])
+  stateId             String              @db.ObjectId
+  state               State               @relation(fields: [stateId], references: [id])
+  zipcode             String
+  mobileOTP           String?
+  emailOTP            String?
+  is_active           Boolean             @default(true)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 }
 
 model otp {
@@ -117,24 +111,26 @@ model Variant {
 }
 
 model State {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  name      String   @unique
-  code      String   @unique
-  active    Boolean  @default(true)
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  name      String     @unique
+  code      String     @unique
+  active    Boolean    @default(true)
   cities    City[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  providers Provider[] // Add this line
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
 model City {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
   name      String
-  stateId   String   @db.ObjectId
-  state     State    @relation(fields: [stateId], references: [id])
+  stateId   String     @db.ObjectId
+  state     State      @relation(fields: [stateId], references: [id])
   pincode   String?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  active    Boolean    @default(true)
+  providers Provider[] // Add this line
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
 model ChecklistCategory {
