@@ -52,7 +52,7 @@ export async function POST(request) {
     if (!otpRecord) {
       return NextResponse.json({
         statusCode: "400",
-        message: "Invalid OTP"
+        message: "Invalid or expired OTP"
       }, { status: 400 });
     }
 
@@ -65,52 +65,69 @@ export async function POST(request) {
       }
     });
 
-    // Update user mobile verification status
-    await prisma.user.update({
+    // Update user mobile verification status and registration status
+    const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: { 
         mobile_verified: true,
+        registration_status: 'pending_approval', // Update registration status
         updated_at: new Date()
-      }
-    });
-
-    // Create user approval record
-    await prisma.user_approval.create({
-      data: {
-        user_id: user.id,
-        status: 'Pending Approval',
-        created_at: new Date(),
-        updated_at: new Date()
-      }
-    });
-
-    // Consume Login API and return JWT token
-    const loginResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        mobile: mobile.trim(),
-        password: user.password, // Assuming password is stored in user table
-        role_id: role_id
-      })
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        mobile: true,
+        role_id: true,
+        registration_status: true,
+        is_active: true,
+        mobile_verified: true,
+        email_verified: true
+      }
     });
 
-    const loginData = await loginResponse.json();
+    // Generate JWT Token directly (instead of calling login API)
+    const tokenPayload = {
+      userId: updatedUser.id,
+      email: updatedUser.email,
+      name: updatedUser.name,
+      role: updatedUser.role_id,
+      mobile: updatedUser.mobile,
+      registration_status: updatedUser.registration_status
+    };
 
-    if (!loginResponse.ok) {
-      return NextResponse.json({
-        statusCode: "401",
-        message: "Login failed"
-      }, { status: 401 });
-    }
+    const token = await generateToken(tokenPayload);
 
-    return NextResponse.json({
+    // Create response with token
+    const response = NextResponse.json({
       statusCode: "200",
-      message: "Mobile OTP Validated",
-      token: loginData.token
+      message: "Mobile OTP Validated Successfully",
+      data: {
+        token,
+        user: {
+          id: updatedUser.id,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          mobile: updatedUser.mobile,
+          role: updatedUser.role_id,
+          registration_status: updatedUser.registration_status,
+          is_active: updatedUser.is_active,
+          mobile_verified: updatedUser.mobile_verified,
+          email_verified: updatedUser.email_verified
+        }
+      }
     }, { status: 200 });
+
+    // Set secure HTTP-only cookie
+    response.cookies.set('authToken', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 86400, // 24 hours
+      path: '/'
+    });
+
+    return response;
 
   } catch (error) {
     console.error('Mobile OTP validation error:', error);
