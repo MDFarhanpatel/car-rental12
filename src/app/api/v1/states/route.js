@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../../../../generated/prisma-client';
 
 const prisma = new PrismaClient();
 
@@ -7,22 +7,22 @@ const prisma = new PrismaClient();
 export async function GET() {
   try {
     const states = await prisma.state.findMany({
-      orderBy: {
-        name: 'asc'
-      }
+      where: { active: true },
+      orderBy: { name: 'asc' }
     });
-    
-    return NextResponse.json({ 
-      success: true, 
-      data: states,
-      total: states.length 
+
+    return NextResponse.json({
+      success: true,
+      data: states
     });
   } catch (error) {
     console.error('Error fetching states:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Failed to fetch states' 
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to fetch states'
     }, { status: 500 });
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
@@ -70,6 +70,8 @@ export async function POST(request) {
       success: false, 
       error: 'Failed to create state' 
     }, { status: 500 });
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
