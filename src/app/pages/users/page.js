@@ -604,7 +604,7 @@ export default function UsersPage() {
         className="w-full md:w-30rem"
         header="Edit User"
       >
-        <form className="flex flex-col gap-4 p-1">
+        <form className="flex flex-col gap-4 p-2">
           <div className="mt-4">
             <FloatLabel>
               <InputText
