@@ -585,7 +585,7 @@ export default function UsersPage() {
           <Button
             label={saving ? "Saving..." : "Save"}
             onClick={addUser}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
+            className="bg-gradient-to-r from-blue-600 to-purple-700 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
             disabled={saving}
           />
           <Button
