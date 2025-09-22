@@ -591,7 +591,7 @@ export default function UsersPage() {
           <Button
             label="Cancel"
             onClick={() => setShowAdd(false)}
-            className="bg-gray-500 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
+            className="bg-gray-600 border-none font-extrabold px-4 sm:px-6 py-2 text-sm sm:text-base rounded-lg"
           />
         </div>
       </Sidebar>
