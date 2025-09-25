@@ -9,8 +9,8 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { BreadCrumb } from "primereact/breadcrumb";
 import { FileUpload } from "primereact/fileupload";
-import { Image } from "primereact/image";
 import { ProgressBar } from "primereact/progressbar";
+import NextImage from "next/image";
 
 export default function BrandsPage() {
   const [brands, setBrands] = useState([]);
@@ -18,11 +18,11 @@ export default function BrandsPage() {
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-  const [form, setForm] = useState({ 
-    name: "", 
+  const [form, setForm] = useState({
+    name: "",
     logoFile: null,
     logoPreview: null,
-    active: true 
+    active: true,
   });
   const [errors, setErrors] = useState({});
   const [uploading, setUploading] = useState(false);
@@ -31,39 +31,39 @@ export default function BrandsPage() {
   const fileUploadRef = useRef(null);
 
   const breadcrumbItems = [
-    { label: "Home", command: () => window.location.href = "/" },
-    { label: "Admin", command: () => window.location.href = "/admin" },
+    { label: "Home", command: () => (window.location.href = "/") },
+    { label: "Admin", command: () => (window.location.href = "/admin") },
     { label: "Brands" },
   ];
 
-  // ✅ Handle window object safely
+  // Handle window object safely
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 640);
     };
-    
+
     handleResize(); // Set initial value
-    window.addEventListener('resize', handleResize);
-    
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   // Get current user from JWT token
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
       try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
+        const payload = JSON.parse(atob(token.split(".")[1]));
         setCurrentUser(payload);
       } catch (error) {
-        console.error('Error decoding token:', error);
+        console.error("Error decoding token:", error);
       }
     }
   }, []);
 
   // Check if user is admin
   const isAdmin = () => {
-    return currentUser?.role_id === 'ADMIN' || currentUser?.role === 'ADMIN';
+    return currentUser?.role_id === "ADMIN" || currentUser?.role === "ADMIN";
   };
 
   // Fetch brands from API
@@ -77,13 +77,13 @@ export default function BrandsPage() {
       const response = await fetch("/api/v1/brands");
       if (response.ok) {
         const data = await response.json();
-        const formattedBrands = data.brands.map(brand => ({
+        const formattedBrands = data.brands.map((brand) => ({
           id: brand.id,
           brand: {
             name: brand.name,
-            logo: brand.logo
+            logo: brand.logo,
           },
-          active: brand.active
+          active: brand.active,
         }));
         setBrands(formattedBrands);
       }
@@ -103,29 +103,33 @@ export default function BrandsPage() {
   const logoBodyTemplate = (rowData) => (
     <div className="flex justify-center">
       {rowData.brand?.logo ? (
-        <img
-          src={rowData.brand?.logo}
-          alt={rowData.brand?.name}
-          className="w-8 h-8 sm:w-10 sm:h-10 rounded object-contain bg-white p-1"
-        />
+        <div className="w-10 h-10 rounded overflow-hidden bg-white p-1 relative">
+          <NextImage
+            src={rowData.brand.logo}
+            alt={rowData.brand.name}
+            fill
+            sizes="40px"
+            style={{ objectFit: "contain" }}
+          />
+        </div>
       ) : (
-        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-200 rounded flex items-center justify-center">
+        <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center">
           <i className="pi pi-image text-gray-400 text-xs"></i>
         </div>
       )}
     </div>
   );
 
-  // ✅ Fixed: Removed admin-only text, only show delete button for admins
+  // Fixed: Only show delete button for admins
   const actionBodyTemplate = (rowData) => (
     <div className="flex gap-1 sm:gap-2 justify-center">
-      <Button 
-        icon="pi pi-pencil" 
-        rounded 
+      <Button
+        icon="pi pi-pencil"
+        rounded
         severity="secondary"
-        className="p-button-sm w-6 h-6 sm:w-8 sm:h-8" 
-        onClick={() => openEdit(rowData)} 
-        aria-label="Edit" 
+        className="p-button-sm w-6 h-6 sm:w-8 sm:h-8"
+        onClick={() => openEdit(rowData)}
+        aria-label="Edit"
       />
       {isAdmin() && (
         <Button
@@ -146,11 +150,11 @@ export default function BrandsPage() {
   // Open Add Brand Dialog
   const openAdd = () => {
     setEditing(null);
-    setForm({ 
-      name: "", 
+    setForm({
+      name: "",
       logoFile: null,
       logoPreview: null,
-      active: true 
+      active: true,
     });
     setErrors({});
     setShowDialog(true);
@@ -158,11 +162,11 @@ export default function BrandsPage() {
 
   const openEdit = (brandEntry) => {
     setEditing(brandEntry);
-    setForm({ 
+    setForm({
       name: brandEntry.brand.name,
       logoFile: null,
       logoPreview: brandEntry.brand.logo,
-      active: brandEntry.active 
+      active: brandEntry.active,
     });
     setErrors({});
     setShowDialog(true);
@@ -183,7 +187,7 @@ export default function BrandsPage() {
     const file = e.files[0];
     if (file) {
       // Validate file type
-      if (!file.type.startsWith('image/')) {
+      if (!file.type.startsWith("image/")) {
         toast.current?.show({
           severity: "error",
           summary: "Invalid file",
@@ -202,12 +206,12 @@ export default function BrandsPage() {
         });
         return;
       }
-      setForm(prev => ({ ...prev, logoFile: file }));
-      
+      setForm((prev) => ({ ...prev, logoFile: file }));
+
       // Create preview URL
       const reader = new FileReader();
       reader.onload = (e) => {
-        setForm(prev => ({ ...prev, logoPreview: e.target.result }));
+        setForm((prev) => ({ ...prev, logoPreview: e.target.result }));
       };
       reader.readAsDataURL(file);
     }
@@ -226,7 +230,7 @@ export default function BrandsPage() {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => resolve(reader.result);
-      reader.onerror = error => reject(error);
+      reader.onerror = (error) => reject(error);
     });
   };
 
@@ -243,7 +247,7 @@ export default function BrandsPage() {
       const brandData = {
         name: form.name.trim(),
         logo: logoUrl || null,
-        active: form.active
+        active: form.active,
       };
 
       let response;
@@ -275,7 +279,7 @@ export default function BrandsPage() {
         toast.current?.show({
           severity: "error",
           summary: "Error",
-          detail: data.message || `Failed to ${editing ? 'update' : 'add'} brand`,
+          detail: data.message || `Failed to ${editing ? "update" : "add"} brand`,
           life: 3000,
         });
       }
@@ -283,7 +287,7 @@ export default function BrandsPage() {
       toast.current?.show({
         severity: "error",
         summary: "Error",
-        detail: `Failed to ${editing ? 'update' : 'add'} brand`,
+        detail: `Failed to ${editing ? "update" : "add"} brand`,
         life: 3000,
       });
     } finally {
@@ -332,27 +336,24 @@ export default function BrandsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-r from-gray-900 via-gray-500 to-gray-600 font-sans">
       <Toast ref={toast} />
-      
+
       {/* Mobile-responsive container */}
       <div className="p-2 sm:p-4 lg:p-6">
-        
         {/* Breadcrumb - Hidden on very small screens */}
         <div className="hidden sm:block mb-4">
-          <BreadCrumb 
-            model={breadcrumbItems} 
-            home={{ icon: "pi pi-home", command: () => window.location.href = "/" }} 
-            className="text-white font-bold text-sm" 
+          <BreadCrumb
+            model={breadcrumbItems}
+            home={{ icon: "pi pi-home", command: () => (window.location.href = "/") }}
+            className="text-white font-bold text-sm"
           />
         </div>
 
         {/* Header - Responsive */}
         <div className="mb-4 sm:mb-6">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white mb-2">
-            Car Brands
-          </h1>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white mb-2">Car Brands</h1>
           {currentUser && (
             <span className="text-xs sm:text-sm text-gray-300">
-              (Logged in as: {currentUser.role_id || currentUser.role || 'User'})
+              (Logged in as: {currentUser.role_id || currentUser.role || "User"})
             </span>
           )}
         </div>
@@ -371,11 +372,11 @@ export default function BrandsPage() {
             <i className="pi pi-list mr-1" />
             {brands.length} Total
           </span>
-          <Button 
-            label="Add Brand" 
-            icon="pi pi-plus" 
-            className="ml-auto bg-gradient-to-r from-fuchsia-700 to-purple-600 border-none font-bold px-3 py-1 sm:px-6 sm:py-2 text-xs sm:text-sm lg:text-base rounded-lg hover:scale-105 transition-transform" 
-            onClick={openAdd} 
+          <Button
+            label="Add Brand"
+            icon="pi pi-plus"
+            className="ml-auto bg-gradient-to-r from-fuchsia-700 to-purple-600 border-none font-bold px-3 py-1 sm:px-6 sm:py-2 text-xs sm:text-sm lg:text-base rounded-lg hover:scale-105 transition-transform"
+            onClick={openAdd}
           />
         </div>
 
@@ -391,39 +392,27 @@ export default function BrandsPage() {
             emptyMessage="No brands found."
             responsiveLayout="scroll"
           >
-            <Column 
-              header="Logo" 
-              body={logoBodyTemplate} 
-              className="w-16 sm:w-20" 
-            />
-            <Column 
-              header="Brand Name" 
-              field="brand.name" 
-              className="text-xs sm:text-sm font-medium"
-            />
+            <Column header="Logo" body={logoBodyTemplate} className="w-16 sm:w-20" />
+            <Column header="Brand Name" field="brand.name" className="text-xs sm:text-sm font-medium" />
             <Column
               header="Status"
               body={(r) => (
-                <span className={`px-2 py-1 rounded text-xs font-medium ${
-                  r.active 
-                    ? 'bg-green-600 text-black' 
-                    : 'bg-red-600 text-black'
-                }`}>
+                <span
+                  className={`px-2 py-1 rounded text-xs font-medium ${
+                    r.active ? "bg-green-600 text-black" : "bg-red-600 text-black"
+                  }`}
+                >
                   {r.active ? "Active" : "Inactive"}
                 </span>
               )}
               className="w-20 sm:w-24"
             />
-            <Column 
-              header="Actions" 
-              body={actionBodyTemplate} 
-              className="w-28 sm:w-32"
-            />
+            <Column header="Actions" body={actionBodyTemplate} className="w-28 sm:w-32" />
           </DataTable>
         </div>
       </div>
 
-      {/* ✅ Fixed: Safe mobile-responsive Dialog */}
+      {/* Fixed: Safe mobile-responsive Dialog */}
       <Dialog
         header={
           <span className="text-lg sm:text-xl font-bold text-fuchsia-700">
@@ -435,15 +424,14 @@ export default function BrandsPage() {
         modal
         blockScroll
         className="rounded-lg shadow-xl"
-        style={{ 
-          width: isMobile ? "95vw" : "400px", 
+        style={{
+          width: isMobile ? "95vw" : "400px",
           maxWidth: "100vw",
-          margin: isMobile ? "10px" : "0"
+          margin: isMobile ? "10px" : "0",
         }}
         onHide={() => setShowDialog(false)}
       >
         <div className="flex flex-col gap-4 p-2 sm:p-4">
-          
           {/* Brand Name Input */}
           <div>
             <label className="font-bold text-sm text-gray-700 block mb-2">
@@ -454,32 +442,27 @@ export default function BrandsPage() {
               value={form.name}
               onChange={onInputChange}
               placeholder="Enter brand name"
-              className={`w-full p-2 text-sm rounded-lg ${
-                errors.name ? "border border-red-500" : ""
-              }`}
+              className={`w-full p-2 text-sm rounded-lg ${errors.name ? "border border-red-500" : ""}`}
             />
             {errors.name && (
-              <small className="text-red-500 text-xs mt-1 block">
-                {errors.name}
-              </small>
+              <small className="text-red-500 text-xs mt-1 block">{errors.name}</small>
             )}
           </div>
 
           {/* Logo Upload Section - OPTIONAL */}
           <div>
-            <label className="font-bold text-sm text-gray-700 block mb-2">
-              Logo (Optional)
-            </label>
-            
+            <label className="font-bold text-sm text-gray-700 block mb-2">Logo (Optional)</label>
+
             {/* Current/Preview Image */}
             {form.logoPreview && (
               <div className="mb-3">
                 <div className="text-xs text-gray-500 mb-1">Current Logo:</div>
-                <div className="w-20 h-20 border-2 border-gray-300 rounded-lg flex items-center justify-center bg-white">
-                  <img 
-                    src={form.logoPreview} 
-                    alt="Logo preview" 
-                    className="max-w-full max-h-full object-contain"
+                <div className="w-20 h-20 border-2 border-gray-300 rounded-lg flex items-center justify-center bg-white relative">
+                  <NextImage
+                    src={form.logoPreview}
+                    alt="Logo preview"
+                    fill
+                    style={{ objectFit: "contain" }}
                   />
                 </div>
               </div>
@@ -498,7 +481,6 @@ export default function BrandsPage() {
               auto={false}
               customUpload={true}
             />
-            
             <div className="text-xs text-gray-500 mt-1">
               Upload a logo image (optional). Max size: 5MB
             </div>
@@ -518,9 +500,7 @@ export default function BrandsPage() {
           </div>
 
           {/* Progress Bar */}
-          {uploading && (
-            <ProgressBar mode="indeterminate" className="h-2" />
-          )}
+          {uploading && <ProgressBar mode="indeterminate" className="h-2" />}
 
           {/* Action Buttons */}
           <div className="flex gap-3 mt-4 justify-end">
