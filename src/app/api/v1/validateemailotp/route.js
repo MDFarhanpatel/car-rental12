@@ -1,9 +1,10 @@
 
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '../../../../generated/prisma-client';
 import { generateToken } from '../../../util/jwt-access.js';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
 
 export async function POST(request) {
   try {
