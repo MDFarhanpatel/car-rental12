@@ -4,25 +4,24 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_here';
 
-// Change this to your frontend origin, or use '*' only for testing
+// Set your exact front-end URL here for security (do NOT use '*' in production)
 const allowedOrigin = 'http://localhost:3000';
 
-export async function OPTIONS(req) {
+export async function OPTIONS(request) {
   return NextResponse.json(null, {
     status: 204,
     headers: {
       'Access-Control-Allow-Origin': allowedOrigin,
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Max-Age': '86400', // cache preflight for 1 day (optional)
+      'Access-Control-Max-Age': '86400',
     },
   });
 }
 
-export async function POST(req) {
-  // Common CORS headers to include in every response
+export async function POST(request) {
   const corsHeaders = {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -30,8 +29,7 @@ export async function POST(req) {
   };
 
   try {
-    // Your login logic here
-    const { email, password } = await req.json();
+    const { email, password } = await request.json();
 
     if (!email || !password) {
       return NextResponse.json(
@@ -80,8 +78,8 @@ export async function POST(req) {
       { success: true, token, message: 'Login successful' },
       { status: 200, headers: corsHeaders }
     );
-  } catch (err) {
-    console.error('Login error:', err);
+  } catch (error) {
+    console.error('Login error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500, headers: corsHeaders }
