@@ -42,24 +42,25 @@ model user {
 }
 
 model Provider {
-  id                  String              @id @default(auto()) @map("_id") @db.ObjectId
-  registration_status registration_status @default(PENDING)
-  name                String
-  email               String              @unique
-  mobile              String              @unique
-  alternate_mobile    String?
-  address             String
-  cityId              String              @db.ObjectId
-  city                City                @relation(fields: [cityId], references: [id])
-  stateId             String              @db.ObjectId
-  state               State               @relation(fields: [stateId], references: [id])
-  zipcode             String
-  mobileOTP           String?
-  emailOTP            String?
-  is_active           Boolean             @default(true)
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
+  id                   String             @id @default(auto()) @map("_id") @db.ObjectId
+  registration_status  registration_status @default(PENDING)
+  name                 String
+  email                String             @unique
+  mobile               String             @unique
+  alternate_mobile     String?
+  address              String
+  cityId               String             @db.ObjectId
+  city                 City               @relation(fields: [cityId], references: [id])
+  stateId              String             @db.ObjectId
+  state                State              @relation(fields: [stateId], references: [id])
+  zipcode              String
+  mobileOTP            String?
+  emailOTP             String?
+  is_active            Boolean            @default(true)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 }
+
 
 model otp {
   id          String    @id @default(auto()) @map("_id") @db.ObjectId

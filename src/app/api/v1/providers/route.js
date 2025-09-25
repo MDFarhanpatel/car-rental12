@@ -1,9 +1,12 @@
-
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
+
+// Helper function to generate 6-digit OTP as string with leading zeros preserved
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 // GET - Fetch all providers
 export async function GET(request) {
@@ -11,17 +14,17 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const active = searchParams.get('active');
     const status = searchParams.get('status');
-    
+
     let whereClause = {};
-    
+
     if (active !== null && active !== undefined) {
       whereClause.is_active = active === 'true';
     }
-    
+
     if (status) {
       whereClause.registration_status = status.toUpperCase();
     }
-    
+
     const providers = await prisma.provider.findMany({
       where: whereClause,
       include: {
@@ -44,7 +47,7 @@ export async function GET(request) {
         createdAt: 'desc'
       }
     });
-    
+
     return NextResponse.json({
       success: true,
       data: providers
@@ -60,18 +63,18 @@ export async function GET(request) {
   }
 }
 
-// POST - Create a new provider
+// POST - Create a new provider with OTP generation
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { 
-      name, 
-      email, 
-      mobile, 
-      alternate_mobile, 
-      address, 
-      cityId, 
-      stateId, 
+    const {
+      name,
+      email,
+      mobile,
+      alternate_mobile,
+      address,
+      cityId,
+      stateId,
       zipcode,
       registration_status = 'PENDING'
     } = body;
@@ -83,42 +86,36 @@ export async function POST(request) {
         error: 'Name is required'
       }, { status: 400 });
     }
-
     if (!email?.trim()) {
       return NextResponse.json({
         success: false,
         error: 'Email is required'
       }, { status: 400 });
     }
-
     if (!mobile?.trim()) {
       return NextResponse.json({
         success: false,
         error: 'Mobile number is required'
       }, { status: 400 });
     }
-
     if (!address?.trim()) {
       return NextResponse.json({
         success: false,
         error: 'Address is required'
       }, { status: 400 });
     }
-
     if (!cityId?.trim()) {
       return NextResponse.json({
         success: false,
         error: 'City is required'
       }, { status: 400 });
     }
-
     if (!stateId?.trim()) {
       return NextResponse.json({
         success: false,
         error: 'State is required'
       }, { status: 400 });
     }
-
     if (!zipcode?.trim()) {
       return NextResponse.json({
         success: false,
@@ -153,7 +150,7 @@ export async function POST(request) {
     // Check if alternate mobile exists (if provided)
     if (alternate_mobile?.trim()) {
       const existingAlternateMobile = await prisma.provider.findFirst({
-        where: { 
+        where: {
           OR: [
             { mobile: alternate_mobile.trim() },
             { alternate_mobile: alternate_mobile.trim() }
@@ -201,7 +198,11 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
-    // Create provider
+    // Generate OTP codes for mobile and email (as strings)
+    const mobileOTP = generateOTP();
+    const emailOTP = generateOTP();
+
+    // Create provider including OTPs
     const newProvider = await prisma.provider.create({
       data: {
         name: name.trim(),
@@ -213,22 +214,16 @@ export async function POST(request) {
         stateId,
         zipcode: zipcode.trim(),
         registration_status: registration_status.toUpperCase(),
-        is_active: true
+        is_active: true,
+        mobileOTP,
+        emailOTP
       },
       include: {
         city: {
-          select: {
-            id: true,
-            name: true,
-            pincode: true
-          }
+          select: { id: true, name: true, pincode: true }
         },
         state: {
-          select: {
-            id: true,
-            name: true,
-            code: true
-          }
+          select: { id: true, name: true, code: true }
         }
       }
     });
@@ -241,7 +236,7 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Error creating provider:', error);
-    
+
     if (error.code === 'P2002') {
       const field = error.meta?.target?.[0];
       return NextResponse.json({
