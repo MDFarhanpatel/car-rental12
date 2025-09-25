@@ -6,21 +6,23 @@ import jwt from 'jsonwebtoken';
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_here';
 
-// Set your exact front-end URL here for security (do NOT use '*' in production)
-const allowedOrigin = 'http://localhost:3000';
+// Set your frontend origin here for CORS
+const allowedOrigin = 'http://localhost:3000'; // change this to your deployed frontend origin in production
 
-export async function OPTIONS(request) {
+// Handle CORS preflight OPTIONS requests
+export async function OPTIONS() {
   return NextResponse.json(null, {
     status: 204,
     headers: {
       'Access-Control-Allow-Origin': allowedOrigin,
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Max-Age': '86400',
+      'Access-Control-Max-Age': '86400', // cache preflight response for 1 day
     },
   });
 }
 
+// Handle POST login requests
 export async function POST(request) {
   const corsHeaders = {
     'Access-Control-Allow-Origin': allowedOrigin,
