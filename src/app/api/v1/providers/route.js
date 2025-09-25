@@ -1,36 +1,42 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken'; // install jsonwebtoken if not done
+import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_here';
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
-// Handle CORS preflight OPTIONS request
+// Change this to your frontend origin, or use '*' only for testing
+const allowedOrigin = 'http://localhost:3000';
+
 export async function OPTIONS(req) {
-  const headers = {
-    'Access-Control-Allow-Origin': '*', // Replace '*' with your frontend domain in production
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  };
-  return new NextResponse(null, { headers });
+  return NextResponse.json(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': allowedOrigin,
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Max-Age': '86400', // cache preflight for 1 day (optional)
+    },
+  });
 }
 
-// Handle POST login
 export async function POST(req) {
-  const headers = {
-    'Access-Control-Allow-Origin': '*', // Replace '*' with your frontend domain in production
+  // Common CORS headers to include in every response
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
 
   try {
+    // Your login logic here
     const { email, password } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json(
         { success: false, error: 'Email and password are required' },
-        { status: 400, headers }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -40,35 +46,26 @@ export async function POST(req) {
 
     if (!provider) {
       return NextResponse.json(
-        {
-          success: false,
-          error: 'No email or username found. Please register first.',
-        },
-        { status: 404, headers }
+        { success: false, error: 'No email or username found. Please register first.' },
+        { status: 404, headers: corsHeaders }
       );
     }
 
-    // Check password validity with bcrypt (password should be hashed on registration)
     const isPasswordValid = await bcrypt.compare(password, provider.password);
     if (!isPasswordValid) {
       return NextResponse.json(
         { success: false, error: 'Invalid email or password' },
-        { status: 401, headers }
+        { status: 401, headers: corsHeaders }
       );
     }
 
-    // OTP verification flags — adjust these fields to your schema
     if (!provider.mobileOTPVerified || !provider.emailOTPVerified) {
       return NextResponse.json(
-        {
-          success: false,
-          error: 'Email or Mobile OTP not verified',
-        },
-        { status: 401, headers }
+        { success: false, error: 'Email or Mobile OTP not verified' },
+        { status: 401, headers: corsHeaders }
       );
     }
 
-    // Generate JWT token with provider info
     const token = jwt.sign(
       {
         id: provider.id,
@@ -80,18 +77,14 @@ export async function POST(req) {
     );
 
     return NextResponse.json(
-      {
-        success: true,
-        token,
-        message: 'Login successful',
-      },
-      { status: 200, headers }
+      { success: true, token, message: 'Login successful' },
+      { status: 200, headers: corsHeaders }
     );
-  } catch (error) {
-    console.error('Login error:', error);
+  } catch (err) {
+    console.error('Login error:', err);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
-      { status: 500, headers }
+      { status: 500, headers: corsHeaders }
     );
   } finally {
     await prisma.$disconnect();
