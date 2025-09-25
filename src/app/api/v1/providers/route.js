@@ -1,254 +1,98 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken'; // install jsonwebtoken if not done
 
 const prisma = new PrismaClient();
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_here';
 
-// Helper function to generate 6-digit OTP as string with leading zeros preserved
-function generateOTP() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+// Handle CORS preflight OPTIONS request
+export async function OPTIONS(req) {
+  const headers = {
+    'Access-Control-Allow-Origin': '*', // Replace '*' with your frontend domain in production
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+  return new NextResponse(null, { headers });
 }
 
-// GET - Fetch all providers
-export async function GET(request) {
+// Handle POST login
+export async function POST(req) {
+  const headers = {
+    'Access-Control-Allow-Origin': '*', // Replace '*' with your frontend domain in production
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+
   try {
-    const { searchParams } = new URL(request.url);
-    const active = searchParams.get('active');
-    const status = searchParams.get('status');
+    const { email, password } = await req.json();
 
-    let whereClause = {};
-
-    if (active !== null && active !== undefined) {
-      whereClause.is_active = active === 'true';
+    if (!email || !password) {
+      return NextResponse.json(
+        { success: false, error: 'Email and password are required' },
+        { status: 400, headers }
+      );
     }
 
-    if (status) {
-      whereClause.registration_status = status.toUpperCase();
-    }
-
-    const providers = await prisma.provider.findMany({
-      where: whereClause,
-      include: {
-        city: {
-          select: {
-            id: true,
-            name: true,
-            pincode: true
-          }
-        },
-        state: {
-          select: {
-            id: true,
-            name: true,
-            code: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
+    const provider = await prisma.provider.findUnique({
+      where: { email: email.toLowerCase().trim() },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: providers
-    });
-  } catch (error) {
-    console.error('Error fetching providers:', error);
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to fetch providers'
-    }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
-  }
-}
-
-// POST - Create a new provider with OTP generation
-export async function POST(request) {
-  try {
-    const body = await request.json();
-    const {
-      name,
-      email,
-      mobile,
-      alternate_mobile,
-      address,
-      cityId,
-      stateId,
-      zipcode,
-      registration_status = 'PENDING'
-    } = body;
-
-    // Validation
-    if (!name?.trim()) {
-      return NextResponse.json({
-        success: false,
-        error: 'Name is required'
-      }, { status: 400 });
-    }
-    if (!email?.trim()) {
-      return NextResponse.json({
-        success: false,
-        error: 'Email is required'
-      }, { status: 400 });
-    }
-    if (!mobile?.trim()) {
-      return NextResponse.json({
-        success: false,
-        error: 'Mobile number is required'
-      }, { status: 400 });
-    }
-    if (!address?.trim()) {
-      return NextResponse.json({
-        success: false,
-        error: 'Address is required'
-      }, { status: 400 });
-    }
-    if (!cityId?.trim()) {
-      return NextResponse.json({
-        success: false,
-        error: 'City is required'
-      }, { status: 400 });
-    }
-    if (!stateId?.trim()) {
-      return NextResponse.json({
-        success: false,
-        error: 'State is required'
-      }, { status: 400 });
-    }
-    if (!zipcode?.trim()) {
-      return NextResponse.json({
-        success: false,
-        error: 'Zipcode is required'
-      }, { status: 400 });
-    }
-
-    // Check if email already exists
-    const existingEmailProvider = await prisma.provider.findUnique({
-      where: { email: email.toLowerCase().trim() }
-    });
-
-    if (existingEmailProvider) {
-      return NextResponse.json({
-        success: false,
-        error: 'Email already exists'
-      }, { status: 409 });
-    }
-
-    // Check if mobile already exists
-    const existingMobileProvider = await prisma.provider.findUnique({
-      where: { mobile: mobile.trim() }
-    });
-
-    if (existingMobileProvider) {
-      return NextResponse.json({
-        success: false,
-        error: 'Mobile number already exists'
-      }, { status: 409 });
-    }
-
-    // Check if alternate mobile exists (if provided)
-    if (alternate_mobile?.trim()) {
-      const existingAlternateMobile = await prisma.provider.findFirst({
-        where: {
-          OR: [
-            { mobile: alternate_mobile.trim() },
-            { alternate_mobile: alternate_mobile.trim() }
-          ]
-        }
-      });
-
-      if (existingAlternateMobile) {
-        return NextResponse.json({
+    if (!provider) {
+      return NextResponse.json(
+        {
           success: false,
-          error: 'Alternate mobile number already exists'
-        }, { status: 409 });
-      }
-    }
-
-    // Verify city exists and belongs to the state
-    const city = await prisma.city.findUnique({
-      where: { id: cityId },
-      include: { state: true }
-    });
-
-    if (!city) {
-      return NextResponse.json({
-        success: false,
-        error: 'Invalid city selected'
-      }, { status: 400 });
-    }
-
-    if (city.stateId !== stateId) {
-      return NextResponse.json({
-        success: false,
-        error: 'City does not belong to the selected state'
-      }, { status: 400 });
-    }
-
-    // Verify state exists
-    const state = await prisma.state.findUnique({
-      where: { id: stateId }
-    });
-
-    if (!state) {
-      return NextResponse.json({
-        success: false,
-        error: 'Invalid state selected'
-      }, { status: 400 });
-    }
-
-    // Generate OTP codes for mobile and email (as strings)
-    const mobileOTP = generateOTP();
-    const emailOTP = generateOTP();
-
-    // Create provider including OTPs
-    const newProvider = await prisma.provider.create({
-      data: {
-        name: name.trim(),
-        email: email.toLowerCase().trim(),
-        mobile: mobile.trim(),
-        alternate_mobile: alternate_mobile?.trim() || null,
-        address: address.trim(),
-        cityId,
-        stateId,
-        zipcode: zipcode.trim(),
-        registration_status: registration_status.toUpperCase(),
-        is_active: true,
-        mobileOTP,
-        emailOTP
-      },
-      include: {
-        city: {
-          select: { id: true, name: true, pincode: true }
+          error: 'No email or username found. Please register first.',
         },
-        state: {
-          select: { id: true, name: true, code: true }
-        }
-      }
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: 'Provider created successfully',
-      data: newProvider
-    }, { status: 201 });
-
-  } catch (error) {
-    console.error('Error creating provider:', error);
-
-    if (error.code === 'P2002') {
-      const field = error.meta?.target?.[0];
-      return NextResponse.json({
-        success: false,
-        error: `Provider with this ${field} already exists`
-      }, { status: 409 });
+        { status: 404, headers }
+      );
     }
 
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to create provider'
-    }, { status: 500 });
+    // Check password validity with bcrypt (password should be hashed on registration)
+    const isPasswordValid = await bcrypt.compare(password, provider.password);
+    if (!isPasswordValid) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid email or password' },
+        { status: 401, headers }
+      );
+    }
+
+    // OTP verification flags — adjust these fields to your schema
+    if (!provider.mobileOTPVerified || !provider.emailOTPVerified) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Email or Mobile OTP not verified',
+        },
+        { status: 401, headers }
+      );
+    }
+
+    // Generate JWT token with provider info
+    const token = jwt.sign(
+      {
+        id: provider.id,
+        email: provider.email,
+        name: provider.name,
+      },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    return NextResponse.json(
+      {
+        success: true,
+        token,
+        message: 'Login successful',
+      },
+      { status: 200, headers }
+    );
+  } catch (error) {
+    console.error('Login error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500, headers }
+    );
   } finally {
     await prisma.$disconnect();
   }
