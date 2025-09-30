@@ -54,8 +54,8 @@ model Provider {
   stateId              String             @db.ObjectId
   state                State              @relation(fields: [stateId], references: [id])
   zipcode              String
-  mobileOTP            String?
-  emailOTP             String?
+  mobileOTP            String?            @unique
+  emailOTP             String?            @unique
   is_active            Boolean            @default(true)
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
